@@ -1,10 +1,10 @@
-export enum ContactStatus {
+export enum EContactStatus {
 	Active = 'ACTIVE',
 	DoNotContact = 'DO_NOT_CONTACT',
 	MissingContactInfo = 'MISSING_CONTACT_INFO',
 }
 
-export enum DebtAgreementStatus {
+export enum EDebtAgreementStatus {
 	Active = 'ACTIVE',
 	Paid = 'PAID',
 	Canceled = 'CANCELED',
@@ -12,21 +12,21 @@ export enum DebtAgreementStatus {
 
 // Persisted installment status.
 // DUE_TODAY and OVERDUE should be derived from dueDate + amount/paid balance.
-export enum InstallmentStatus {
+export enum EInstallmentStatus {
 	Pending = 'PENDING',
 	PartiallyPaid = 'PARTIALLY_PAID',
 	Paid = 'PAID',
 	Canceled = 'CANCELED',
 }
 
-export enum PaymentMethod {
+export enum EPaymentMethod {
 	Pix = 'PIX',
 	Boleto = 'BOLETO',
 	Manual = 'MANUAL',
 	WebhookSimulated = 'WEBHOOK_SIMULATED',
 }
 
-export enum CommunicationType {
+export enum ECommunicationType {
 	PreDueReminder = 'PRE_DUE_REMINDER',
 	DueDateReminder = 'DUE_DATE_REMINDER',
 	OverdueSoftNotice = 'OVERDUE_SOFT_NOTICE',
@@ -35,12 +35,12 @@ export enum CommunicationType {
 	PaymentConfirmation = 'PAYMENT_CONFIRMATION',
 }
 
-export enum CommunicationChannel {
+export enum ECommunicationChannel {
 	WhatsApp = 'WHATSAPP',
 	Email = 'EMAIL',
 }
 
-export enum CommunicationStatus {
+export enum ECommunicationStatus {
 	Pending = 'PENDING',
 	Generated = 'GENERATED',
 	SentSimulated = 'SENT_SIMULATED',
@@ -48,7 +48,7 @@ export enum CommunicationStatus {
 	Failed = 'FAILED',
 }
 
-export enum PaymentWebhookStatus {
+export enum EPaymentWebhookStatus {
 	Received = 'RECEIVED',
 	Processed = 'PROCESSED',
 	Duplicated = 'DUPLICATED',
