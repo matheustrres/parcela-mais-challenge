@@ -152,6 +152,7 @@ describe('PatientEntity', () => {
 			const patient = PatientEntity.create({
 				...makeProps(),
 				phone: null,
+				preferredChannel: ECommunicationChannel.Email,
 			});
 			expect(patient.hasContactInfo()).toBe(true);
 		});
