@@ -6,6 +6,7 @@ import { DomainException } from '@/@core/domain/exceptions/domain-exception';
 import { EInstallmentStatus } from '@/@core/enums/domain';
 
 import { InstallmentEntity } from '@/modules/installments/domain/entities/installment.entity';
+import { EDerivedInstallmentStatus } from '@/modules/installments/domain/enums/derived-status';
 
 describe('InstallmentEntity', () => {
 	const makeProps = () => ({
@@ -193,6 +194,17 @@ describe('InstallmentEntity', () => {
 		});
 	});
 
+	describe('.isCanceled', () => {
+		it('should return true when status is canceled', () => {
+			expect(
+				InstallmentEntity.create({
+					...makeProps(),
+					status: EInstallmentStatus.Canceled,
+				}).isCanceled(),
+			).toBe(true);
+		});
+	});
+
 	describe('.isOverdue', () => {
 		it('should return true when unpaid installment due date is before reference date', () => {
 			const entity = InstallmentEntity.create(makeProps());
@@ -234,6 +246,84 @@ describe('InstallmentEntity', () => {
 			expect(entity.getDaysOverdue(new Date('2024-04-10T08:00:00.000Z'))).toBe(
 				0,
 			);
+		});
+	});
+
+	describe('.getDerivedStatus', () => {
+		it('should return canceled when installment is canceled', () => {
+			const entity = InstallmentEntity.create({
+				...makeProps(),
+				status: EInstallmentStatus.Canceled,
+			});
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-11T08:00:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.Canceled);
+		});
+
+		it('should return paid when installment is paid', () => {
+			const entity = InstallmentEntity.create({
+				...makeProps(),
+				paidAmount: MoneyVo.fromCents(10_000),
+				status: EInstallmentStatus.Paid,
+				paidAt: new Date('2024-04-09T10:00:00.000Z'),
+			});
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-11T08:00:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.Paid);
+		});
+
+		it('should return overdue when pending installment is overdue', () => {
+			const entity = InstallmentEntity.create(makeProps());
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-11T08:00:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.Overdue);
+		});
+
+		it('should return overdue when partially paid installment is overdue', () => {
+			const entity = InstallmentEntity.create({
+				...makeProps(),
+				paidAmount: MoneyVo.fromCents(2_500),
+				status: EInstallmentStatus.PartiallyPaid,
+			});
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-11T08:00:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.Overdue);
+		});
+
+		it('should return due today when pending installment is due today', () => {
+			const entity = InstallmentEntity.create(makeProps());
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-10T23:59:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.DueToday);
+		});
+
+		it('should return due today when partially paid installment is due today', () => {
+			const entity = InstallmentEntity.create({
+				...makeProps(),
+				paidAmount: MoneyVo.fromCents(2_500),
+				status: EInstallmentStatus.PartiallyPaid,
+			});
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-10T23:59:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.DueToday);
+		});
+
+		it('should return partially paid when installment is partially paid and not due yet', () => {
+			const entity = InstallmentEntity.create({
+				...makeProps(),
+				paidAmount: MoneyVo.fromCents(2_500),
+				status: EInstallmentStatus.PartiallyPaid,
+			});
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-09T08:00:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.PartiallyPaid);
+		});
+
+		it('should return pending when installment is pending and not due yet', () => {
+			const entity = InstallmentEntity.create(makeProps());
+			expect(
+				entity.getDerivedStatus(new Date('2024-04-09T08:00:00.000Z')),
+			).toBe(EDerivedInstallmentStatus.Pending);
 		});
 	});
 });

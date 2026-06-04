@@ -10,6 +10,8 @@ import { DomainException } from '@/@core/domain/exceptions/domain-exception';
 import { Guard } from '@/@core/domain/logic/guard';
 import { EInstallmentStatus } from '@/@core/enums/domain';
 
+import { EDerivedInstallmentStatus } from '@/modules/installments/domain/enums/derived-status';
+
 import { ensureValidDate } from '@/shared/utils/ensure-valid-date';
 
 type InstallmentEntityProps = {
@@ -88,10 +90,15 @@ export class InstallmentEntity extends UpdatableEntity<InstallmentEntityProps> {
 		return this.props.status === EInstallmentStatus.Paid;
 	}
 
+	isCanceled(): boolean {
+		return this.props.status === EInstallmentStatus.Canceled;
+	}
+
 	isOverdue(referenceDate: Date): boolean {
 		ensureValidDate(referenceDate, 'INSTALLMENT_REFERENCE_DATE_REQUIRED');
 		return (
 			!this.isPaid() &&
+			!this.isCanceled() &&
 			InstallmentEntity.compareDateOnly(referenceDate, this.props.dueDate) > 0
 		);
 	}
@@ -100,6 +107,7 @@ export class InstallmentEntity extends UpdatableEntity<InstallmentEntityProps> {
 		ensureValidDate(referenceDate, 'INSTALLMENT_REFERENCE_DATE_REQUIRED');
 		return (
 			!this.isPaid() &&
+			!this.isCanceled() &&
 			InstallmentEntity.compareDateOnly(referenceDate, this.props.dueDate) === 0
 		);
 	}
@@ -113,6 +121,25 @@ export class InstallmentEntity extends UpdatableEntity<InstallmentEntityProps> {
 		const dueDate = InstallmentEntity.toStartOfDay(this.props.dueDate);
 		const dayInMs = 24 * 60 * 60 * 1000;
 		return Math.floor((reference.getTime() - dueDate.getTime()) / dayInMs);
+	}
+
+	getDerivedStatus(referenceDate: Date): EDerivedInstallmentStatus {
+		if (this.isCanceled()) {
+			return EDerivedInstallmentStatus.Canceled;
+		}
+		if (this.isPaid()) {
+			return EDerivedInstallmentStatus.Paid;
+		}
+		if (this.isOverdue(referenceDate)) {
+			return EDerivedInstallmentStatus.Overdue;
+		}
+		if (this.isDueToday(referenceDate)) {
+			return EDerivedInstallmentStatus.DueToday;
+		}
+		if (this.props.status === EInstallmentStatus.PartiallyPaid) {
+			return EDerivedInstallmentStatus.PartiallyPaid;
+		}
+		return EDerivedInstallmentStatus.Pending;
 	}
 
 	get clinicId(): EntityId {
