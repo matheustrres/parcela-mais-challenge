@@ -1,3 +1,9 @@
+import { ECollectionRuleSkippedReason } from '../enums/collection-rule-skipped-reason';
+import {
+	CollectionRuleDecision,
+	CollectionRuleAction,
+} from '../types/collection-rule-decision';
+
 import {
 	ECommunicationChannel,
 	ECommunicationType,
@@ -5,11 +11,6 @@ import {
 } from '@/@core/enums/domain';
 
 import { CommunicationAttemptEntity } from '@/modules/communications/domain/entities/communication-attempt.entity';
-import { ECollectionRuleSkippedReason } from '@/modules/communications/domain/enums/collection-rule-skipped-reason';
-import {
-	CollectionRuleAction,
-	CollectionRuleDecision,
-} from '@/modules/communications/domain/types/collection-rule-decision';
 import { InstallmentEntity } from '@/modules/installments/domain/entities/installment.entity';
 import { PatientEntity } from '@/modules/patients/domain/entities/patient.entity';
 

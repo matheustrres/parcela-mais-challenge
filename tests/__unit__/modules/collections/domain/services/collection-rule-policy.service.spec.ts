@@ -10,9 +10,9 @@ import {
 	EInstallmentStatus,
 } from '@/@core/enums/domain';
 
+import { ECollectionRuleSkippedReason } from '@/modules/collections/domain/enums/collection-rule-skipped-reason';
+import { CollectionRulePolicyDomainService } from '@/modules/collections/domain/services/collection-rule-policy.service';
 import { CommunicationAttemptEntity } from '@/modules/communications/domain/entities/communication-attempt.entity';
-import { ECollectionRuleSkippedReason } from '@/modules/communications/domain/enums/collection-rule-skipped-reason';
-import { CollectionRulePolicyDomainService } from '@/modules/communications/domain/services/collection-rule-policy.service';
 import { InstallmentEntity } from '@/modules/installments/domain/entities/installment.entity';
 import { PatientEntity } from '@/modules/patients/domain/entities/patient.entity';
 
