@@ -11,6 +11,7 @@ import { Prisma } from '@prisma/client';
 import { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 
+import { ApplicationException } from '@/@core/application/exceptions/application-exception';
 import { ENodeEnv } from '@/@core/enums/node-env';
 
 import { EnvService } from '@/shared/modules/env/env.service';
@@ -54,7 +55,7 @@ export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
 	}
 
 	#mapToProblemDetails(exception: unknown, requestUrl: string): ProblemDetails {
-    const defaultStatus = 500;
+		const defaultStatus = 500;
 		const problemDetails: ProblemDetails = {
 			type: this.#getType(defaultStatus),
 			status: defaultStatus,
@@ -71,6 +72,15 @@ export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
 				title: HttpStatus[statusCode] || 'Error',
 				status: statusCode,
 				detail: Array.isArray(message) ? message : [message],
+			};
+		}
+		if (exception instanceof ApplicationException) {
+			return {
+				...problemDetails,
+				type: this.#getType(exception.statusCode),
+				title: HttpStatus[exception.statusCode] || 'Error',
+				status: exception.statusCode,
+				detail: exception.message,
 			};
 		}
 		if (this.isProduction) {
@@ -126,6 +136,14 @@ export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
 				type: exception.constructor.name,
 				message: exception.message,
 				statusCode: response.statusCode,
+			};
+		}
+		if (exception instanceof ApplicationException) {
+			return {
+				type: exception.constructor.name,
+				message: exception.message,
+				code: exception.code,
+				statusCode: exception.statusCode,
 			};
 		}
 		if (exception instanceof Error) {

@@ -8,6 +8,8 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 
+import { DebtAgreementsModule } from '@/modules/debt-agreements/debt-agreements.module';
+
 import { GlobalExceptionFilter } from '@/shared/exceptions/global-exception-filter';
 import { RequestIdMiddleware } from '@/shared/middlewares/request-id.middleware';
 import { DatabaseModule } from '@/shared/modules/database/database.module';
@@ -16,6 +18,7 @@ import { EnvModule } from '@/shared/modules/env/env.module';
 @Module({
 	imports: [
 		DatabaseModule,
+		DebtAgreementsModule,
 		EnvModule,
 		LoggerModule.forRoot({
 			pinoHttp: {
