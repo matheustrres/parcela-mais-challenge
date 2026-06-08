@@ -123,7 +123,10 @@ export class PaymentEntity extends UpdatableEntity<PaymentEntityProps> {
 		if (Guard.isEmpty(props.idempotencyPayloadHash)) {
 			throw new DomainException('PAYMENT_IDEMPOTENCY_PAYLOAD_HASH_REQUIRED');
 		}
-		if (!(props.paidAt instanceof Date) || Number.isNaN(props.paidAt.getTime())) {
+		if (
+			!(props.paidAt instanceof Date) ||
+			Number.isNaN(props.paidAt.getTime())
+		) {
 			throw new DomainException('PAYMENT_PAID_AT_REQUIRED');
 		}
 	}

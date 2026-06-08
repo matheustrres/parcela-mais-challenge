@@ -19,8 +19,7 @@ export async function createAppFixture({
 }> {
 	const module = await Test.createTestingModule({
 		imports: [AppModule],
-	})
-		.compile();
+	}).compile();
 
 	const app = module.createNestApplication();
 

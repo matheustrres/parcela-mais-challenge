@@ -11,8 +11,8 @@ import { AppModule } from '@/app.module';
 
 import { ENodeEnv } from '@/@core/enums/node-env';
 
-import { setupSwaggerDocs } from '@/shared/swagger';
 import { EnvService } from '@/shared/modules/env/env.service';
+import { setupSwaggerDocs } from '@/shared/swagger';
 
 enum ExitStatusEnum {
 	FAILURE = 1,
