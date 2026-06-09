@@ -9,6 +9,7 @@ import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 
 import { DebtAgreementsModule } from '@/modules/debt-agreements/debt-agreements.module';
+import { PaymentsModule } from '@/modules/payments/payments.module';
 
 import { GlobalExceptionFilter } from '@/shared/exceptions/global-exception-filter';
 import { RequestIdMiddleware } from '@/shared/middlewares/request-id.middleware';
@@ -17,9 +18,8 @@ import { EnvModule } from '@/shared/modules/env/env.module';
 
 @Module({
 	imports: [
-		DatabaseModule,
-		DebtAgreementsModule,
 		EnvModule,
+		DatabaseModule,
 		LoggerModule.forRoot({
 			pinoHttp: {
 				autoLogging: false,
@@ -78,8 +78,9 @@ import { EnvModule } from '@/shared/modules/env/env.module';
 				},
 			},
 		}),
+		DebtAgreementsModule,
+		PaymentsModule,
 	],
-	controllers: [AppController],
 	providers: [
 		AppService,
 		{
@@ -87,6 +88,7 @@ import { EnvModule } from '@/shared/modules/env/env.module';
 			useClass: GlobalExceptionFilter,
 		},
 	],
+	controllers: [AppController],
 })
 export class AppModule implements NestModule {
 	configure(consumer: MiddlewareConsumer): void {
