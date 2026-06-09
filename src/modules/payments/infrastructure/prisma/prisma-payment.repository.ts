@@ -95,6 +95,26 @@ export class PrismaPaymentRepository extends PaymentRepository {
 		return payments.map((payment) => this.toEntity(payment));
 	}
 
+	async findByClinicIdAndInstallmentIds(
+		clinicId: EntityId,
+		installmentIds: EntityId[],
+	): Promise<PaymentEntity[]> {
+		if (!installmentIds.length) {
+			return [];
+		}
+
+		const payments = await this.databaseService.payment.findMany({
+			where: {
+				clinicId: clinicId.toString(),
+				installmentId: {
+					in: installmentIds.map((installmentId) => installmentId.toString()),
+				},
+			},
+		});
+
+		return payments.map((payment) => this.toEntity(payment));
+	}
+
 	private toEntity(payment: {
 		id: string;
 		clinicId: string;

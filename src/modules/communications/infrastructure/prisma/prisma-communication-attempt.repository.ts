@@ -52,29 +52,27 @@ export class PrismaCommunicationAttemptRepository extends CommunicationAttemptRe
 			},
 		});
 
-		return attempts.map((attempt) =>
-			CommunicationAttemptEntity.createFrom(
-				EntityUuid.createFrom(attempt.id),
-				{
-					clinicId: EntityUuid.createFrom(attempt.clinicId),
-					patientId: EntityUuid.createFrom(attempt.patientId),
-					installmentId: EntityUuid.createFrom(attempt.installmentId),
-					type: attempt.type as ECommunicationType,
-					channel: attempt.channel as ECommunicationChannel,
-					status: attempt.status as ECommunicationStatus,
-					scheduledFor: attempt.scheduledFor,
-					sentAt: attempt.sentAt,
-					skippedReason: attempt.skippedReason,
-					message: attempt.message,
-					aiGenerated: attempt.aiGenerated,
-					templateKey: attempt.templateKey,
+		return attempts.map((attempt) => this.toEntity(attempt));
+	}
+
+	async findByClinicIdAndInstallmentIds(
+		clinicId: EntityId,
+		installmentIds: EntityId[],
+	): Promise<CommunicationAttemptEntity[]> {
+		if (!installmentIds.length) {
+			return [];
+		}
+
+		const attempts = await this.databaseService.communicationAttempt.findMany({
+			where: {
+				clinicId: clinicId.toString(),
+				installmentId: {
+					in: installmentIds.map((installmentId) => installmentId.toString()),
 				},
-				{
-					createdAt: attempt.createdAt,
-					updatedAt: attempt.updatedAt,
-				},
-			),
-		);
+			},
+		});
+
+		return attempts.map((attempt) => this.toEntity(attempt));
 	}
 
 	async createMany(
@@ -119,5 +117,45 @@ export class PrismaCommunicationAttemptRepository extends CommunicationAttemptRe
 
 			throw error;
 		}
+	}
+
+	private toEntity(attempt: {
+		id: string;
+		clinicId: string;
+		patientId: string;
+		installmentId: string;
+		type: string;
+		channel: string;
+		status: string;
+		scheduledFor: Date | null;
+		sentAt: Date | null;
+		skippedReason: string | null;
+		message: string | null;
+		aiGenerated: boolean;
+		templateKey: string | null;
+		createdAt: Date;
+		updatedAt: Date;
+	}): CommunicationAttemptEntity {
+		return CommunicationAttemptEntity.createFrom(
+			EntityUuid.createFrom(attempt.id),
+			{
+				clinicId: EntityUuid.createFrom(attempt.clinicId),
+				patientId: EntityUuid.createFrom(attempt.patientId),
+				installmentId: EntityUuid.createFrom(attempt.installmentId),
+				type: attempt.type as ECommunicationType,
+				channel: attempt.channel as ECommunicationChannel,
+				status: attempt.status as ECommunicationStatus,
+				scheduledFor: attempt.scheduledFor,
+				sentAt: attempt.sentAt,
+				skippedReason: attempt.skippedReason,
+				message: attempt.message,
+				aiGenerated: attempt.aiGenerated,
+				templateKey: attempt.templateKey,
+			},
+			{
+				createdAt: attempt.createdAt,
+				updatedAt: attempt.updatedAt,
+			},
+		);
 	}
 }

@@ -9,6 +9,10 @@ export abstract class CommunicationAttemptRepository {
 		installmentIds: EntityId[];
 		patientIds: EntityId[];
 	}): Promise<CommunicationAttemptEntity[]>;
+	abstract findByClinicIdAndInstallmentIds(
+		clinicId: EntityId,
+		installmentIds: EntityId[],
+	): Promise<CommunicationAttemptEntity[]>;
 	abstract createMany(
 		attempts: CommunicationAttemptEntity[],
 		tx?: TransactionContext,

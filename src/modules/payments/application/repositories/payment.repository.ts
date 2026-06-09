@@ -21,4 +21,8 @@ export abstract class PaymentRepository {
 		installmentIds: EntityId[];
 		paidSince: Date;
 	}): Promise<PaymentEntity[]>;
+	abstract findByClinicIdAndInstallmentIds(
+		clinicId: EntityId,
+		installmentIds: EntityId[],
+	): Promise<PaymentEntity[]>;
 }
