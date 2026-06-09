@@ -43,6 +43,8 @@ export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
 		INSTALLMENT_ALREADY_PAID: 422,
 		INSTALLMENT_CONCURRENT_MODIFICATION: 409,
 		INVALID_PAYMENT_PAID_AT: 422,
+		INVALID_COLLECTION_REFERENCE_DATE: 422,
+		COLLECTION_RULE_ATTEMPT_ALREADY_EXISTS: 409,
 	};
 
 	private readonly isProduction: boolean;

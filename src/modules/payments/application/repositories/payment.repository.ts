@@ -16,4 +16,9 @@ export abstract class PaymentRepository {
 		payment: PaymentEntity,
 		tx?: TransactionContext,
 	): Promise<void>;
+	abstract findByClinicIdAndInstallmentIdsPaidSince(input: {
+		clinicId: EntityId;
+		installmentIds: EntityId[];
+		paidSince: Date;
+	}): Promise<PaymentEntity[]>;
 }

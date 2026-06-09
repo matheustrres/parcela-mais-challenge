@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { TransactionContext } from '@/@core/application/transaction-manager';
+import { EntityId } from '@/@core/domain/entities/entity-id';
 import { EntityUuid } from '@/@core/domain/entities/entity-uuid';
 import { MoneyVo } from '@/@core/domain/entities/value-objects/money';
 import { EPaymentMethod } from '@/@core/enums/domain';
@@ -66,6 +67,32 @@ export class PrismaPaymentRepository extends PaymentRepository {
 				createdAt: payment.createdAt,
 			},
 		});
+	}
+
+	async findByClinicIdAndInstallmentIdsPaidSince(input: {
+		clinicId: EntityId;
+		installmentIds: EntityId[];
+		paidSince: Date;
+	}): Promise<PaymentEntity[]> {
+		if (input.installmentIds.length === 0) {
+			return [];
+		}
+
+		const payments = await this.databaseService.payment.findMany({
+			where: {
+				clinicId: input.clinicId.toString(),
+				installmentId: {
+					in: input.installmentIds.map((installmentId) =>
+						installmentId.toString(),
+					),
+				},
+				paidAt: {
+					gte: input.paidSince,
+				},
+			},
+		});
+
+		return payments.map((payment) => this.toEntity(payment));
 	}
 
 	private toEntity(payment: {

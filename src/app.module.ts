@@ -8,6 +8,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 
+import { CollectionsModule } from '@/modules/collections/collections.module';
 import { DebtAgreementsModule } from '@/modules/debt-agreements/debt-agreements.module';
 import { PaymentsModule } from '@/modules/payments/payments.module';
 
@@ -78,6 +79,7 @@ import { EnvModule } from '@/shared/modules/env/env.module';
 				},
 			},
 		}),
+		CollectionsModule,
 		DebtAgreementsModule,
 		PaymentsModule,
 	],

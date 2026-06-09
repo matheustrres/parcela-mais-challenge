@@ -11,7 +11,6 @@ import { InstallmentEntity } from '@/modules/installments/domain/entities/instal
 
 import { DatabaseService } from '@/shared/modules/database/database.service';
 import { resolvePrismaClient } from '@/shared/modules/database/prisma-transaction-manager';
-import { version } from 'os';
 
 @Injectable()
 export class PrismaInstallmentRepository extends InstallmentRepository {
