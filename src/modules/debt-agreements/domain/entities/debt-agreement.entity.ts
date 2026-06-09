@@ -72,6 +72,10 @@ export class DebtAgreementEntity extends UpdatableEntity<DebtAgreementEntityProp
 		return this.props.status === EDebtAgreementStatus.Active;
 	}
 
+	isCanceled(): boolean {
+		return this.props.status === EDebtAgreementStatus.Canceled;
+	}
+
 	get clinicId(): EntityId {
 		return this.props.clinicId;
 	}

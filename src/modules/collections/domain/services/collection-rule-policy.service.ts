@@ -1,7 +1,7 @@
 import { ECollectionRuleSkippedReason } from '../enums/collection-rule-skipped-reason';
 import {
 	CollectionRuleDecision,
-	CollectionRuleAction,
+	CollectionRuleDecisionItem,
 } from '../types/collection-rule-decision';
 
 import {
@@ -11,26 +11,33 @@ import {
 } from '@/@core/enums/domain';
 
 import { CommunicationAttemptEntity } from '@/modules/communications/domain/entities/communication-attempt.entity';
+import { DebtAgreementEntity } from '@/modules/debt-agreements/domain/entities/debt-agreement.entity';
 import { InstallmentEntity } from '@/modules/installments/domain/entities/installment.entity';
 import { PatientEntity } from '@/modules/patients/domain/entities/patient.entity';
+import { PaymentEntity } from '@/modules/payments/domain/entities/payment.entity';
 
 import { ensureValidDate } from '@/shared/utils/ensure-valid-date';
 
 type CollectionRulePolicyInput = {
 	patient: PatientEntity;
 	installment: InstallmentEntity;
+	debtAgreement: DebtAgreementEntity;
 	previousAttempts: CommunicationAttemptEntity[];
+	recentPayments: PaymentEntity[];
 	referenceDate: Date;
 };
 
 type CollectionRuleDecisionGuards = {
 	isInstallmentPaid: boolean;
+	isInstallmentCanceled: boolean;
+	isDebtAgreementCanceled: boolean;
 	isPatientDoNotContact: boolean;
 	isPatientMissingContactInfo: boolean;
 	availableChannels: ECommunicationChannel[];
 	isWithinBusinessHours: boolean;
 	ruleType: ECommunicationType | null;
 	hasPatientAttemptToday: boolean;
+	hasRecentPartialPayment: boolean;
 	firstSkippedReason: ECollectionRuleSkippedReason | null;
 };
 
@@ -48,7 +55,7 @@ export class CollectionRulePolicyDomainService {
 		const guardChecks = this.buildDecisionGuards(input);
 
 		if (guardChecks.firstSkippedReason) {
-			return this.skip(guardChecks.firstSkippedReason);
+			return this.globalSkip(guardChecks.firstSkippedReason);
 		}
 
 		const ruleType = guardChecks.ruleType as ECommunicationType;
@@ -57,25 +64,18 @@ export class CollectionRulePolicyDomainService {
 			this.resolveActionsForType(ruleType),
 		);
 		if (!channelEligibleActions.length) {
-			return this.skip(ECollectionRuleSkippedReason.PatientMissingContactInfo);
+			return this.globalSkip(
+				ECollectionRuleSkippedReason.PatientMissingContactInfo,
+			);
 		}
 
-		const actions = this.filterExistingAttempts(
+		const items = this.buildActionDecisionItems(
 			input.previousAttempts,
 			input.installment,
 			channelEligibleActions,
 		);
-		if (!actions.length) {
-			return this.skip(
-				ECollectionRuleSkippedReason.CommunicationTypeAlreadyExists,
-			);
-		}
 
-		return {
-			shouldCommunicate: true,
-			actions,
-			skippedReason: null,
-		};
+		return { items };
 	}
 
 	private buildDecisionGuards(
@@ -83,6 +83,8 @@ export class CollectionRulePolicyDomainService {
 	): CollectionRuleDecisionGuards {
 		const guards = {
 			isInstallmentPaid: input.installment.isPaid(),
+			isInstallmentCanceled: input.installment.isCanceled(),
+			isDebtAgreementCanceled: input.debtAgreement.isCanceled(),
 			isPatientDoNotContact:
 				input.patient.contactStatus === EContactStatus.DoNotContact,
 			isPatientMissingContactInfo:
@@ -95,12 +97,24 @@ export class CollectionRulePolicyDomainService {
 				input.patient,
 				input.referenceDate,
 			),
+			hasRecentPartialPayment: this.hasRecentPartialPayment(
+				input.recentPayments,
+				input.installment,
+			),
 		};
 
 		const skipRules = [
 			{
 				when: guards.isInstallmentPaid,
 				reason: ECollectionRuleSkippedReason.InstallmentAlreadyPaid,
+			},
+			{
+				when: guards.isInstallmentCanceled,
+				reason: ECollectionRuleSkippedReason.InstallmentCanceled,
+			},
+			{
+				when: guards.isDebtAgreementCanceled,
+				reason: ECollectionRuleSkippedReason.DebtAgreementCanceled,
 			},
 			{
 				when: guards.isPatientDoNotContact,
@@ -124,6 +138,10 @@ export class CollectionRulePolicyDomainService {
 				when: guards.hasPatientAttemptToday,
 				reason: ECollectionRuleSkippedReason.PatientAlreadyContactedToday,
 			},
+			{
+				when: guards.hasRecentPartialPayment,
+				reason: ECollectionRuleSkippedReason.RecentPartialPayment,
+			},
 		] as const;
 
 		const firstSkippedReason =
@@ -135,13 +153,18 @@ export class CollectionRulePolicyDomainService {
 		};
 	}
 
-	private skip(
+	private globalSkip(
 		skippedReason: ECollectionRuleSkippedReason,
 	): CollectionRuleDecision {
 		return {
-			shouldCommunicate: false,
-			actions: [],
-			skippedReason,
+			items: [
+				{
+					type: null,
+					channel: null,
+					status: 'SKIPPED',
+					skippedReason,
+				},
+			],
 		};
 	}
 
@@ -172,7 +195,7 @@ export class CollectionRulePolicyDomainService {
 
 	private resolveActionsForType(
 		type: ECommunicationType,
-	): CollectionRuleAction[] {
+	): Array<Pick<CollectionRuleDecisionItem, 'type' | 'channel'>> {
 		if (type === ECommunicationType.PreDueReminder) {
 			return [{ type, channel: ECommunicationChannel.WhatsApp }];
 		}
@@ -197,26 +220,54 @@ export class CollectionRulePolicyDomainService {
 
 	private filterAvailableChannels(
 		patient: PatientEntity,
-		actions: CollectionRuleAction[],
-	): CollectionRuleAction[] {
+		actions: Array<Pick<CollectionRuleDecisionItem, 'type' | 'channel'>>,
+	): Array<Pick<CollectionRuleDecisionItem, 'type' | 'channel'>> {
 		return actions.filter((action) =>
-			this.patientCanReceiveChannel(patient, action.channel),
+			this.patientCanReceiveChannel(
+				patient,
+				action.channel as ECommunicationChannel,
+			),
 		);
 	}
 
-	private filterExistingAttempts(
+	private buildActionDecisionItems(
 		previousAttempts: CommunicationAttemptEntity[],
 		installment: InstallmentEntity,
-		actions: CollectionRuleAction[],
-	): CollectionRuleAction[] {
-		return actions.filter(
-			(action) =>
-				!previousAttempts.some(
-					(attempt) =>
-						attempt.installmentId.equals(installment.id) &&
-						attempt.type === action.type &&
-						attempt.channel === action.channel,
-				),
+		actions: Array<Pick<CollectionRuleDecisionItem, 'type' | 'channel'>>,
+	): CollectionRuleDecisionItem[] {
+		return actions.map((action) => {
+			const alreadyExists = previousAttempts.some(
+				(attempt) =>
+					attempt.installmentId.equals(installment.id) &&
+					attempt.type === action.type &&
+					attempt.channel === action.channel,
+			);
+
+			if (alreadyExists) {
+				return {
+					type: action.type,
+					channel: action.channel,
+					status: 'SKIPPED',
+					skippedReason:
+						ECollectionRuleSkippedReason.CommunicationTypeAlreadyExists,
+				};
+			}
+
+			return {
+				type: action.type,
+				channel: action.channel,
+				status: 'GENERATED',
+				skippedReason: null,
+			};
+		});
+	}
+
+	private hasRecentPartialPayment(
+		recentPayments: PaymentEntity[],
+		installment: InstallmentEntity,
+	): boolean {
+		return recentPayments.some((payment) =>
+			payment.installmentId.equals(installment.id),
 		);
 	}
 

@@ -150,8 +150,8 @@ model CommunicationAttempt {
   installment Installment @relation(fields: [installmentId], references: [id], onDelete: Restrict)
 
   // Deduplication key for the collection rule:
-  // clinicId + patientId + installmentId + communicationType
-  @@unique([clinicId, patientId, installmentId, type])
+  // clinicId + patientId + installmentId + communicationType + channel
+  @@unique([clinicId, patientId, installmentId, type, channel])
   @@index([clinicId])
   @@index([clinicId, status])
   @@index([clinicId, scheduledFor])

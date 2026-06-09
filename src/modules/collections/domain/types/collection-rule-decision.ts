@@ -5,13 +5,13 @@ import {
 	ECommunicationType,
 } from '@/@core/enums/domain';
 
-export type CollectionRuleAction = {
-	type: ECommunicationType;
-	channel: ECommunicationChannel;
+export type CollectionRuleDecisionItem = {
+	type: ECommunicationType | null;
+	channel: ECommunicationChannel | null;
+	status: 'GENERATED' | 'SKIPPED';
+	skippedReason: ECollectionRuleSkippedReason | null;
 };
 
 export type CollectionRuleDecision = {
-	shouldCommunicate: boolean;
-	actions: CollectionRuleAction[];
-	skippedReason: ECollectionRuleSkippedReason | null;
+	items: CollectionRuleDecisionItem[];
 };
