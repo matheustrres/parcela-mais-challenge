@@ -128,7 +128,7 @@ describe('CreateDebtAgreementUseCase', () => {
 				installmentsCount: 3,
 				firstDueDate: new Date('2026-01-15T12:00:00.000Z'),
 			}),
-		).rejects.toThrowError(new ApplicationException('CLINIC_NOT_FOUND', 404));
+		).rejects.toThrowError(new ApplicationException('CLINIC_NOT_FOUND'));
 	});
 
 	it('should throw when patient is not found', async () => {
@@ -145,7 +145,7 @@ describe('CreateDebtAgreementUseCase', () => {
 				installmentsCount: 3,
 				firstDueDate: new Date('2026-01-15T12:00:00.000Z'),
 			}),
-		).rejects.toThrowError(new ApplicationException('PATIENT_NOT_FOUND', 404));
+		).rejects.toThrowError(new ApplicationException('PATIENT_NOT_FOUND'));
 	});
 
 	it('should throw when patient belongs to another clinic', async () => {
@@ -168,7 +168,7 @@ describe('CreateDebtAgreementUseCase', () => {
 				firstDueDate: new Date('2026-01-15T12:00:00.000Z'),
 			}),
 		).rejects.toThrowError(
-			new ApplicationException('PATIENT_DOES_NOT_BELONG_TO_CLINIC', 422),
+			new ApplicationException('PATIENT_DOES_NOT_BELONG_TO_CLINIC'),
 		);
 	});
 

@@ -32,6 +32,19 @@ type HttpValidationResponse = {
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
+	private static readonly applicationErrorStatusMap: Record<string, number> = {
+		CLINIC_NOT_FOUND: 404,
+		PATIENT_NOT_FOUND: 404,
+		PATIENT_DOES_NOT_BELONG_TO_CLINIC: 422,
+		INSTALLMENT_NOT_FOUND: 404,
+		IDEMPOTENCY_KEY_PAYLOAD_MISMATCH: 409,
+		EXTERNAL_REFERENCE_PAYLOAD_MISMATCH: 409,
+		PAYMENT_AMOUNT_EXCEEDS_INSTALLMENT_BALANCE: 422,
+		INSTALLMENT_ALREADY_PAID: 422,
+		INSTALLMENT_CONCURRENT_MODIFICATION: 409,
+		INVALID_PAYMENT_PAID_AT: 422,
+	};
+
 	private readonly isProduction: boolean;
 
 	constructor(
@@ -75,11 +88,12 @@ export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
 			};
 		}
 		if (exception instanceof ApplicationException) {
+			const statusCode = this.#mapApplicationErrorCode(exception.code);
 			return {
 				...problemDetails,
-				type: this.#getType(exception.statusCode),
-				title: HttpStatus[exception.statusCode] || 'Error',
-				status: exception.statusCode,
+				type: this.#getType(statusCode),
+				title: HttpStatus[statusCode] || 'Error',
+				status: statusCode,
 				detail: exception.message,
 			};
 		}
@@ -119,6 +133,13 @@ export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
 		return prismaErrorMessages[code] ?? 'Erro interno do servidor.';
 	}
 
+	#mapApplicationErrorCode(code: string): number {
+		return (
+			GlobalExceptionFilter.applicationErrorStatusMap[code] ??
+			HttpStatus.UNPROCESSABLE_ENTITY
+		);
+	}
+
 	#getType(statusCode: number): string {
 		return `https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Status/${statusCode}`;
 	}
@@ -143,7 +164,7 @@ export class GlobalExceptionFilter implements ExceptionFilter<unknown> {
 				type: exception.constructor.name,
 				message: exception.message,
 				code: exception.code,
-				statusCode: exception.statusCode,
+				statusCode: this.#mapApplicationErrorCode(exception.code),
 			};
 		}
 		if (exception instanceof Error) {

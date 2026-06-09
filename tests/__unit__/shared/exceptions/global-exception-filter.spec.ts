@@ -49,10 +49,7 @@ describe('GlobalExceptionFilter', () => {
 	it('should map application exception to 404 problem details', () => {
 		const { filter, reply, response, argumentsHost, logger } = makeSut();
 
-		filter.catch(
-			new ApplicationException('CLINIC_NOT_FOUND', 404),
-			argumentsHost,
-		);
+		filter.catch(new ApplicationException('CLINIC_NOT_FOUND'), argumentsHost);
 
 		expect(logger.assign).toHaveBeenCalledWith({
 			err: {
@@ -79,7 +76,7 @@ describe('GlobalExceptionFilter', () => {
 		const { filter, reply, response, argumentsHost } = makeSut();
 
 		filter.catch(
-			new ApplicationException('PATIENT_DOES_NOT_BELONG_TO_CLINIC', 422),
+			new ApplicationException('PATIENT_DOES_NOT_BELONG_TO_CLINIC'),
 			argumentsHost,
 		);
 
@@ -93,6 +90,27 @@ describe('GlobalExceptionFilter', () => {
 				instance: '/debt-agreements',
 			},
 			422,
+		);
+	});
+
+	it('should map payment conflict exception to 409 problem details', () => {
+		const { filter, reply, response, argumentsHost } = makeSut();
+
+		filter.catch(
+			new ApplicationException('IDEMPOTENCY_KEY_PAYLOAD_MISMATCH'),
+			argumentsHost,
+		);
+
+		expect(reply).toHaveBeenCalledWith(
+			response,
+			{
+				type: `https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Status/409`,
+				title: HttpStatus[409],
+				status: 409,
+				detail: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH',
+				instance: '/debt-agreements',
+			},
+			409,
 		);
 	});
 });

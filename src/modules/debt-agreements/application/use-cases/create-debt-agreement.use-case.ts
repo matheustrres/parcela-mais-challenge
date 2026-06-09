@@ -56,16 +56,16 @@ export class CreateDebtAgreementUseCase implements UseCase<
 
 		const clinic = await this.clinicRepository.findById(clinicId);
 		if (!clinic) {
-			throw new ApplicationException('CLINIC_NOT_FOUND', 404);
+			throw new ApplicationException('CLINIC_NOT_FOUND');
 		}
 
 		const patient = await this.patientRepository.findById(patientId);
 		if (!patient) {
-			throw new ApplicationException('PATIENT_NOT_FOUND', 404);
+			throw new ApplicationException('PATIENT_NOT_FOUND');
 		}
 
 		if (!patient.clinicId.equals(clinic.id)) {
-			throw new ApplicationException('PATIENT_DOES_NOT_BELONG_TO_CLINIC', 422);
+			throw new ApplicationException('PATIENT_DOES_NOT_BELONG_TO_CLINIC');
 		}
 
 		const totalAmount = MoneyVo.fromCents(input.totalAmountCents);
