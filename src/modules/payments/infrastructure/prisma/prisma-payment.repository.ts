@@ -3,20 +3,17 @@ import { Injectable } from '@nestjs/common';
 import { TransactionContext } from '@/@core/application/transaction-manager';
 import { EntityId } from '@/@core/domain/entities/entity-id';
 import { EntityUuid } from '@/@core/domain/entities/entity-uuid';
-import { MoneyVo } from '@/@core/domain/entities/value-objects/money';
-import { EPaymentMethod } from '@/@core/enums/domain';
 
 import { PaymentRepository } from '@/modules/payments/application/repositories/payment.repository';
 import { PaymentEntity } from '@/modules/payments/domain/entities/payment.entity';
+import { PaymentPrismaMapper } from '@/modules/payments/infrastructure/prisma/payment-prisma.mapper';
 
 import { DatabaseService } from '@/shared/modules/database/database.service';
 import { resolvePrismaClient } from '@/shared/modules/database/prisma-transaction-manager';
 
 @Injectable()
-export class PrismaPaymentRepository extends PaymentRepository {
-	constructor(private readonly databaseService: DatabaseService) {
-		super();
-	}
+export class PrismaPaymentRepository implements PaymentRepository {
+	constructor(private readonly databaseService: DatabaseService) {}
 
 	async findByClinicIdAndIdempotencyKey(
 		clinicId: EntityUuid,
@@ -26,12 +23,11 @@ export class PrismaPaymentRepository extends PaymentRepository {
 			where: {
 				clinicId_idempotencyKey: {
 					clinicId: clinicId.toString(),
-					idempotencyKey: idempotencyKey,
+					idempotencyKey,
 				},
 			},
 		});
-
-		return payment ? this.toEntity(payment) : null;
+		return payment ? PaymentPrismaMapper.toDomain(payment) : null;
 	}
 
 	async findByClinicIdAndExternalReference(
@@ -42,30 +38,17 @@ export class PrismaPaymentRepository extends PaymentRepository {
 			where: {
 				clinicId_externalReference: {
 					clinicId: clinicId.toString(),
-					externalReference: externalReference,
+					externalReference,
 				},
 			},
 		});
-
-		return payment ? this.toEntity(payment) : null;
+		return payment ? PaymentPrismaMapper.toDomain(payment) : null;
 	}
 
 	async create(payment: PaymentEntity, tx?: TransactionContext): Promise<void> {
 		const client = resolvePrismaClient(this.databaseService, tx);
-
 		await client.payment.create({
-			data: {
-				id: payment.id.toString(),
-				clinicId: payment.clinicId.toString(),
-				installmentId: payment.installmentId.toString(),
-				amountCents: payment.amount.getCents(),
-				method: payment.method,
-				externalReference: payment.externalReference,
-				idempotencyKey: payment.idempotencyKey,
-				idempotencyPayloadHash: payment.idempotencyPayloadHash,
-				paidAt: payment.paidAt,
-				createdAt: payment.createdAt,
-			},
+			data: PaymentPrismaMapper.toPersistence(payment),
 		});
 	}
 
@@ -74,10 +57,7 @@ export class PrismaPaymentRepository extends PaymentRepository {
 		installmentIds: EntityId[];
 		paidSince: Date;
 	}): Promise<PaymentEntity[]> {
-		if (input.installmentIds.length === 0) {
-			return [];
-		}
-
+		if (!input.installmentIds.length) return [];
 		const payments = await this.databaseService.payment.findMany({
 			where: {
 				clinicId: input.clinicId.toString(),
@@ -91,18 +71,14 @@ export class PrismaPaymentRepository extends PaymentRepository {
 				},
 			},
 		});
-
-		return payments.map((payment) => this.toEntity(payment));
+		return payments.map(PaymentPrismaMapper.toDomain);
 	}
 
 	async findByClinicIdAndInstallmentIds(
 		clinicId: EntityId,
 		installmentIds: EntityId[],
 	): Promise<PaymentEntity[]> {
-		if (!installmentIds.length) {
-			return [];
-		}
-
+		if (!installmentIds.length) return [];
 		const payments = await this.databaseService.payment.findMany({
 			where: {
 				clinicId: clinicId.toString(),
@@ -111,37 +87,6 @@ export class PrismaPaymentRepository extends PaymentRepository {
 				},
 			},
 		});
-
-		return payments.map((payment) => this.toEntity(payment));
-	}
-
-	private toEntity(payment: {
-		id: string;
-		clinicId: string;
-		installmentId: string;
-		amountCents: number;
-		method: string;
-		externalReference: string | null;
-		idempotencyKey: string;
-		idempotencyPayloadHash: string;
-		paidAt: Date;
-		createdAt: Date;
-	}): PaymentEntity {
-		return PaymentEntity.createFrom(
-			EntityUuid.createFrom(payment.id),
-			{
-				clinicId: EntityUuid.createFrom(payment.clinicId),
-				installmentId: EntityUuid.createFrom(payment.installmentId),
-				amount: MoneyVo.fromCents(payment.amountCents),
-				method: payment.method as EPaymentMethod,
-				externalReference: payment.externalReference,
-				idempotencyKey: payment.idempotencyKey,
-				idempotencyPayloadHash: payment.idempotencyPayloadHash,
-				paidAt: payment.paidAt,
-			},
-			{
-				createdAt: payment.createdAt,
-			},
-		);
+		return payments.map(PaymentPrismaMapper.toDomain);
 	}
 }

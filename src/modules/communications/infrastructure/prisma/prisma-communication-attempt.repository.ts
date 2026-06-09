@@ -4,34 +4,26 @@ import { Prisma } from '@prisma/client';
 import { ApplicationException } from '@/@core/application/exceptions/application-exception';
 import { TransactionContext } from '@/@core/application/transaction-manager';
 import { EntityId } from '@/@core/domain/entities/entity-id';
-import { EntityUuid } from '@/@core/domain/entities/entity-uuid';
-import {
-	ECommunicationChannel,
-	ECommunicationStatus,
-	ECommunicationType,
-} from '@/@core/enums/domain';
 
 import { CommunicationAttemptRepository } from '@/modules/communications/application/repositories/communication-attempt.repository';
 import { CommunicationAttemptEntity } from '@/modules/communications/domain/entities/communication-attempt.entity';
+import { CommunicationAttemptPrismaMapper } from '@/modules/communications/infrastructure/prisma/communication-attempt-prisma.mapper';
 
 import { DatabaseService } from '@/shared/modules/database/database.service';
 import { resolvePrismaClient } from '@/shared/modules/database/prisma-transaction-manager';
 
 @Injectable()
-export class PrismaCommunicationAttemptRepository extends CommunicationAttemptRepository {
-	constructor(private readonly databaseService: DatabaseService) {
-		super();
-	}
+export class PrismaCommunicationAttemptRepository implements CommunicationAttemptRepository {
+	constructor(private readonly databaseService: DatabaseService) {}
 
 	async findRelevantForCollectionRun(input: {
 		clinicId: EntityId;
 		installmentIds: EntityId[];
 		patientIds: EntityId[];
 	}): Promise<CommunicationAttemptEntity[]> {
-		if (input.installmentIds.length === 0 || input.patientIds.length === 0) {
+		if (!input.installmentIds.length || !input.patientIds.length) {
 			return [];
 		}
-
 		const attempts = await this.databaseService.communicationAttempt.findMany({
 			where: {
 				clinicId: input.clinicId.toString(),
@@ -51,8 +43,7 @@ export class PrismaCommunicationAttemptRepository extends CommunicationAttemptRe
 				],
 			},
 		});
-
-		return attempts.map((attempt) => this.toEntity(attempt));
+		return attempts.map(CommunicationAttemptPrismaMapper.toDomain);
 	}
 
 	async findByClinicIdAndInstallmentIds(
@@ -62,7 +53,6 @@ export class PrismaCommunicationAttemptRepository extends CommunicationAttemptRe
 		if (!installmentIds.length) {
 			return [];
 		}
-
 		const attempts = await this.databaseService.communicationAttempt.findMany({
 			where: {
 				clinicId: clinicId.toString(),
@@ -71,39 +61,20 @@ export class PrismaCommunicationAttemptRepository extends CommunicationAttemptRe
 				},
 			},
 		});
-
-		return attempts.map((attempt) => this.toEntity(attempt));
+		return attempts.map(CommunicationAttemptPrismaMapper.toDomain);
 	}
 
 	async createMany(
 		attempts: CommunicationAttemptEntity[],
 		tx?: TransactionContext,
 	): Promise<void> {
-		if (attempts.length === 0) {
-			return;
-		}
-
+		if (!attempts.length) return;
 		const client = resolvePrismaClient(this.databaseService, tx);
-
 		try {
 			await client.communicationAttempt.createMany({
-				data: attempts.map((attempt) => ({
-					id: attempt.id.toString(),
-					clinicId: attempt.clinicId.toString(),
-					patientId: attempt.patientId.toString(),
-					installmentId: attempt.installmentId.toString(),
-					type: attempt.type,
-					channel: attempt.channel,
-					status: attempt.status,
-					scheduledFor: attempt.scheduledFor,
-					sentAt: attempt.sentAt,
-					skippedReason: attempt.skippedReason,
-					message: attempt.message,
-					aiGenerated: attempt.aiGenerated,
-					templateKey: attempt.templateKey,
-					createdAt: attempt.createdAt,
-					updatedAt: attempt.updatedAt ?? attempt.createdAt,
-				})),
+				data: attempts.map((attempt) =>
+					CommunicationAttemptPrismaMapper.toPersistence(attempt),
+				),
 			});
 		} catch (error) {
 			if (
@@ -114,48 +85,7 @@ export class PrismaCommunicationAttemptRepository extends CommunicationAttemptRe
 					'COLLECTION_RULE_ATTEMPT_ALREADY_EXISTS',
 				);
 			}
-
 			throw error;
 		}
-	}
-
-	private toEntity(attempt: {
-		id: string;
-		clinicId: string;
-		patientId: string;
-		installmentId: string;
-		type: string;
-		channel: string;
-		status: string;
-		scheduledFor: Date | null;
-		sentAt: Date | null;
-		skippedReason: string | null;
-		message: string | null;
-		aiGenerated: boolean;
-		templateKey: string | null;
-		createdAt: Date;
-		updatedAt: Date;
-	}): CommunicationAttemptEntity {
-		return CommunicationAttemptEntity.createFrom(
-			EntityUuid.createFrom(attempt.id),
-			{
-				clinicId: EntityUuid.createFrom(attempt.clinicId),
-				patientId: EntityUuid.createFrom(attempt.patientId),
-				installmentId: EntityUuid.createFrom(attempt.installmentId),
-				type: attempt.type as ECommunicationType,
-				channel: attempt.channel as ECommunicationChannel,
-				status: attempt.status as ECommunicationStatus,
-				scheduledFor: attempt.scheduledFor,
-				sentAt: attempt.sentAt,
-				skippedReason: attempt.skippedReason,
-				message: attempt.message,
-				aiGenerated: attempt.aiGenerated,
-				templateKey: attempt.templateKey,
-			},
-			{
-				createdAt: attempt.createdAt,
-				updatedAt: attempt.updatedAt,
-			},
-		);
 	}
 }
