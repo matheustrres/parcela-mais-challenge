@@ -14,7 +14,7 @@ export class InstallmentPrismaMapper {
 				clinicId: EntityUuid.createFrom(record.clinicId),
 				debtAgreementId: EntityUuid.createFrom(record.debtAgreementId),
 				installmentNumber: record.installmentNumber,
-				dueDate: record.dueDate,
+				dueDate: InstallmentPrismaMapper.normalizeDateOnly(record.dueDate),
 				amount: MoneyVo.fromCents(record.amountCents),
 				paidAmount: MoneyVo.fromCents(record.paidAmountCents),
 				status: record.status as EInstallmentStatus,
@@ -36,7 +36,7 @@ export class InstallmentPrismaMapper {
 			clinicId: entity.clinicId.toString(),
 			debtAgreementId: entity.debtAgreementId.toString(),
 			installmentNumber: entity.installmentNumber,
-			dueDate: entity.dueDate,
+			dueDate: InstallmentPrismaMapper.normalizeDateOnly(entity.dueDate),
 			amountCents: entity.amount.getCents(),
 			paidAmountCents: entity.paidAmount.getCents(),
 			status: entity.status,
@@ -57,5 +57,16 @@ export class InstallmentPrismaMapper {
 			version: entity.version,
 			updatedAt: entity.updatedAt ?? new Date(),
 		};
+	}
+
+	private static normalizeDateOnly(date: Date): Date {
+		return new Date(
+			Date.UTC(
+				date.getUTCFullYear(),
+				date.getUTCMonth(),
+				date.getUTCDate(),
+				12,
+			),
+		);
 	}
 }

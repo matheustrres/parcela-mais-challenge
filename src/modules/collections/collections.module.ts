@@ -10,12 +10,12 @@ import { CollectionRulePolicyDomainService } from '@/modules/collections/domain/
 import { CollectionCommunicationMessageFactoryDomainService } from '@/modules/collections/domain/services/collections-communication-message-factory.service';
 import { PrismaCollectionCandidateRepository } from '@/modules/collections/infrastructure/prisma/prisma-collection-candidate.repository';
 import { PrismaDelinquentPatientsQueryRepository } from '@/modules/collections/infrastructure/prisma/prisma-delinquent-patients-query.repository';
-import { CommunicationAttemptRepository } from '@/modules/communications/application/repositories/communication-attempt.repository';
-import { PrismaCommunicationAttemptRepository } from '@/modules/communications/infrastructure/prisma/prisma-communication-attempt.repository';
+import { CollectionsController } from '@/modules/collections/presentation/http/collections.controller';
+import { CommunicationsModule } from '@/modules/communications/communications.module';
 import { PaymentsModule } from '@/modules/payments/payments.module';
 
 @Module({
-	imports: [ClinicsModule, PaymentsModule],
+	imports: [ClinicsModule, PaymentsModule, CommunicationsModule],
 	providers: [
 		RunCollectionRulesUseCase,
 		ListDelinquentPatientsUseCase,
@@ -30,11 +30,8 @@ import { PaymentsModule } from '@/modules/payments/payments.module';
 			provide: DelinquentPatientsQueryRepository,
 			useClass: PrismaDelinquentPatientsQueryRepository,
 		},
-		{
-			provide: CommunicationAttemptRepository,
-			useClass: PrismaCommunicationAttemptRepository,
-		},
 	],
+	controllers: [CollectionsController],
 	exports: [RunCollectionRulesUseCase, ListDelinquentPatientsUseCase],
 })
 export class CollectionsModule {}

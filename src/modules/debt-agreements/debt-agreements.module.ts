@@ -5,6 +5,7 @@ import { DebtAgreementRepository } from '@/modules/debt-agreements/application/r
 import { CreateDebtAgreementUseCase } from '@/modules/debt-agreements/application/use-cases/create-debt-agreement.use-case';
 import { InstallmentSchedulePolicyDomainService } from '@/modules/debt-agreements/domain/services/installment-schedule-policy.service';
 import { PrismaDebtAgreementRepository } from '@/modules/debt-agreements/infrastructure/prisma/prisma-debt-agreement.repository';
+import { DebtAgreementsController } from '@/modules/debt-agreements/presentation/http/debt-agreements.controller';
 import { InstallmentsModule } from '@/modules/installments/installments.module';
 import { PatientsModule } from '@/modules/patients/patients.module';
 
@@ -18,7 +19,7 @@ import { PatientsModule } from '@/modules/patients/patients.module';
 			useClass: PrismaDebtAgreementRepository,
 		},
 	],
-	controllers: [],
+	controllers: [DebtAgreementsController],
 	exports: [CreateDebtAgreementUseCase, DebtAgreementRepository],
 })
 export class DebtAgreementsModule {}

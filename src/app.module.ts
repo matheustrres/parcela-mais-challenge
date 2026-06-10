@@ -9,7 +9,10 @@ import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 
 import { CollectionsModule } from '@/modules/collections/collections.module';
+import { CommunicationsModule } from '@/modules/communications/communications.module';
+import { DashboardModule } from '@/modules/dashboard/dashboard.module';
 import { DebtAgreementsModule } from '@/modules/debt-agreements/debt-agreements.module';
+import { InstallmentsModule } from '@/modules/installments/installments.module';
 import { PaymentsModule } from '@/modules/payments/payments.module';
 
 import { GlobalExceptionFilter } from '@/shared/exceptions/global-exception-filter';
@@ -80,7 +83,10 @@ import { EnvModule } from '@/shared/modules/env/env.module';
 			},
 		}),
 		CollectionsModule,
+		CommunicationsModule,
+		DashboardModule,
 		DebtAgreementsModule,
+		InstallmentsModule,
 		PaymentsModule,
 	],
 	providers: [

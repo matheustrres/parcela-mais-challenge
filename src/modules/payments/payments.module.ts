@@ -5,6 +5,7 @@ import { PaymentRepository } from '@/modules/payments/application/repositories/p
 import { PaymentIdempotencyPayloadHasherService } from '@/modules/payments/application/services/payment-idempotency-payload-hasher.service';
 import { RegisterPaymentUseCase } from '@/modules/payments/application/use-cases/register-payment.use-case';
 import { PrismaPaymentRepository } from '@/modules/payments/infrastructure/prisma/prisma-payment.repository';
+import { PaymentsController } from '@/modules/payments/presentation/http/payments.controller';
 
 @Module({
 	imports: [InstallmentsModule],
@@ -16,7 +17,7 @@ import { PrismaPaymentRepository } from '@/modules/payments/infrastructure/prism
 			useClass: PrismaPaymentRepository,
 		},
 	],
-	controllers: [],
+	controllers: [PaymentsController],
 	exports: [RegisterPaymentUseCase, PaymentRepository],
 })
 export class PaymentsModule {}
