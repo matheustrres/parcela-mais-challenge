@@ -82,27 +82,94 @@ overdue_amount_cents
 ai_fallback_total
 ```
 
-## Dashboard mínimo
+## Dashboard operacional
 
 Endpoint:
 
 ```http
-GET /dashboard/summary?clinicId=clinic_001&referenceDate=2026-06-03
+GET /dashboard/summary?clinicId=clinic_001&referenceDate=2026-06-10T15:00:00.000Z
 ```
 
 Resposta:
 
 ```json
 {
-  "totalReceivableCents": 850000,
-  "totalOverdueCents": 230000,
-  "paidThisMonthCents": 120000,
-  "overduePatients": 4,
-  "openInstallments": 17,
-  "paidInstallments": 9,
-  "communicationsGeneratedToday": 6
+  "clinicId": "clinic_001",
+  "referenceDate": "2026-06-10T15:00:00.000Z",
+  "receivables": {
+    "totalDebtAmountCents": 220000,
+    "totalPaidAmountCents": 20000,
+    "totalOpenAmountCents": 200000,
+    "totalOverdueAmountCents": 80000
+  },
+  "agreements": {
+    "total": 5,
+    "active": 3,
+    "canceled": 1,
+    "fullyPaid": 1
+  },
+  "installments": {
+    "total": 4,
+    "open": 3,
+    "paid": 1,
+    "partiallyPaid": 1,
+    "overdue": 1,
+    "dueToday": 1,
+    "dueSoon": 1
+  },
+  "patients": {
+    "total": 6,
+    "withOpenDebt": 3,
+    "delinquent": 1,
+    "doNotContact": 1,
+    "missingContactInfo": 1
+  },
+  "collections": {
+    "totalAttempts": 3,
+    "generatedToday": 2,
+    "byChannel": {
+      "whatsapp": 2,
+      "email": 1
+    },
+    "byType": {
+      "preDueReminder": 0,
+      "dueDateReminder": 1,
+      "overdueSoftNotice": 1,
+      "overdueFollowUp": 1,
+      "overdueEscalation": 0
+    }
+  },
+  "payments": {
+    "totalPayments": 2,
+    "paidAmountLast7DaysCents": 20000,
+    "paidAmountLast30DaysCents": 110000
+  },
+  "priority": {
+    "topDelinquentPatients": [
+      {
+        "patientId": "patient_001",
+        "patientName": "Ana Sintetica",
+        "totalOverdueCents": 80000,
+        "overdueInstallments": 1,
+        "daysOverdue": 7,
+        "priorityScore": 45,
+        "priorityReasons": ["OVERDUE_DAYS", "OVERDUE_AMOUNT"],
+        "lastCommunicationAt": "2026-06-10T13:00:00.000Z",
+        "suggestedAction": null,
+        "suggestedActionSkippedReason": "PATIENT_ALREADY_CONTACTED_TODAY"
+      }
+    ]
+  }
 }
 ```
+
+Notas semânticas:
+
+- `receivables` considera apenas acordos `ACTIVE`.
+- `installments.total` e os demais agregados de parcelas consideram apenas acordos `ACTIVE`; acordos cancelados entram apenas nos contadores administrativos de `agreements`.
+- `installments.open` inclui parcelas `PENDING` e `PARTIALLY_PAID` com saldo em aberto.
+- `agreements.fullyPaid` é um contador derivado de acordos quitados, não uma quarta categoria adicional do payload.
+- `suggestedActionSkippedReason` representa o primeiro bloqueio encontrado pela `CollectionRulePolicyDomainService`, seguindo a ordem de precedência interna da policy.
 
 ## Tratamento de erros
 

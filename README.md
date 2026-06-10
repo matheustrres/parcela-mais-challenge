@@ -2,6 +2,30 @@
 
 API backend para um recorte funcional de cobrança de parcelas em clínicas. O projeto implementa criação e consulta de dívidas por endpoints dedicados, geração de parcelas, registro de pagamentos com idempotência, régua de cobrança, listagem de inadimplentes e endpoints HTTP documentados via Swagger.
 
+## Resumo do recorte
+
+Priorizei entregar bem o núcleo mínimo do case:
+
+- registrar e consultar dívidas;
+- registrar pagamentos com proteção contra duplicidade;
+- listar inadimplentes com priorização;
+- aplicar uma régua de cobrança com regras explícitas;
+- manter o sistema demonstrável por API, com dados sintéticos e testes.
+
+Em vez de abrir muitas frentes, preferi concentrar esforço em consistência de domínio, isolamento por clínica, semântica temporal das leituras, idempotência de pagamento e previsibilidade dos fluxos críticos.
+
+## O que foi priorizado e por quê
+
+As prioridades deste recorte foram:
+
+- `dívida + parcela + pagamento` como base do modelo, porque o restante da cobrança depende dessa consistência;
+- leitura clara do estado atual da cobrança, com endpoints dedicados para consultar acordos e inadimplência;
+- regras de comunicação determinísticas, porque a régua é o centro do desafio;
+- robustez em pagamento, com idempotência, replay seguro e proteção contra atualização concorrente;
+- dados sintéticos, isolamento multi-clínica e validações explícitas, para reduzir risco operacional e facilitar avaliação.
+
+Escolhi não começar por frontend ou integrações externas porque isso aumentaria a superfície de demo sem melhorar tanto a qualidade do núcleo de cobrança.
+
 ## Contexto
 
 Clínicas que parcelam tratamentos precisam:
@@ -25,6 +49,19 @@ Este repositório implementa esse recorte com foco em modelagem de domínio, sep
 - Swagger como interface principal de avaliação;
 - seed sintético para demo manual;
 - testes unitários e E2E dos fluxos críticos.
+
+## O que ficou de fora
+
+Para manter o recorte enxuto e sólido, deixei fora desta etapa:
+
+- autenticação e autorização reais;
+- renegociação / novo parcelamento;
+- integrações reais de cobrança ou mensageria;
+- webhook de pagamento completo;
+- frontend dedicado para operação da clínica;
+- camada analítica mais profunda do dashboard.
+
+Esses itens seriam passos naturais de evolução, mas não eram necessários para demonstrar o raciocínio principal de modelagem, cobrança e pagamento.
 
 ## Stack
 
@@ -206,20 +243,44 @@ O sistema permite registrar e consultar dívidas por endpoints dedicados:
 - `POST /debt-agreements`: registra o acordo e gera parcelas.
 - `GET /debt-agreements`: lista acordos da clínica com filtros por `patientId`, `status`, paginação e `referenceDate` opcional. Quando omitida, a API resolve internamente a data de referência atual e devolve esse valor no payload.
 - `GET /debt-agreements/:id`: retorna o detalhe do acordo e das parcelas. Exige `referenceDate` para expor `derivedStatus` coerente por parcela.
+- `GET /dashboard/summary`: aceita `referenceDate` opcional, mas para demo manual e vídeo o ideal é enviar uma data explícita para manter `overdue`, `dueToday`, `dueSoon`, fila e métricas de comunicação determinísticas.
+  No contrato atual, agregados de `receivables` e `installments` consideram apenas acordos `ACTIVE`; acordos cancelados entram apenas nos contadores administrativos de `agreements`. Quando `suggestedAction` vier `null`, `suggestedActionSkippedReason` expõe o primeiro bloqueio encontrado pela `CollectionRulePolicyDomainService`, conforme a precedência interna da régua.
 
 ## Uso de IA
 
-Usei IA para acelerar desenho de domínio, gerar planos de implementação, revisar ambiguidade de regras e antecipar edge cases. Corrigi decisões onde a IA tendia a simplificar demais, especialmente em idempotência, multicanal D+7, privacidade e separação entre domínio/aplicação/infra.
+Usei IA como apoio de engenharia, não como fonte final de decisão.
 
-O uso de IA ficou restrito a apoio de engenharia. As regras efetivamente implementadas foram validadas e ajustadas manualmente no código e nos testes.
+Ela me ajudou a:
+
+- acelerar exploração de alternativas de modelagem;
+- estruturar planos de implementação;
+- levantar edge cases de cobrança, leitura e pagamento;
+- revisar lacunas de teste e ambiguidades de endpoint.
+
+Os principais pontos em que precisei corrigir ou endurecer o que a IA sugeria foram:
+
+- idempotência e replay de pagamento, onde respostas superficiais tendiam a ser inseguras;
+- multicanal em `D+7`, para não reduzir uma regra importante a um único disparo simplificado;
+- isolamento multi-clínica e privacidade, para evitar vazamento de escopo entre clínicas;
+- separação entre domínio, aplicação e query layer, para não misturar regra de negócio com leitura HTTP;
+- semântica temporal dos endpoints de leitura, deixando explícito quando `referenceDate` é obrigatória ou resolvida internamente.
+
+Em resumo: usei IA para ganhar velocidade, mas validei manualmente as decisões estruturais e os casos mais sensíveis no código e nos testes.
 
 ## Trade-offs
 
-- Swagger foi usado como interface principal de demonstração, sem frontend dedicado;
-- autenticação não foi implementada nesta etapa, então `clinicId` segue explícito nos endpoints;
-- Prisma `db push` foi mantido no fluxo local para reduzir atrito de setup durante o case;
-- seed foi pensado para demo manual e avaliação rápida, não para volumetria;
-- `dashboard/summary` é um read model mínimo, não uma camada analítica completa.
+- Swagger foi usado como interface principal de demonstração, sem frontend dedicado:
+  isso reduziu tempo de apresentação e aumentou foco na API e nas regras de domínio.
+- autenticação não foi implementada nesta etapa, então `clinicId` segue explícito nos endpoints:
+  é um trade-off aceitável para o case, mas não seria a forma final de produção.
+- Prisma `db push` foi mantido no fluxo local para reduzir atrito de setup:
+  em um produto evoluindo por mais tempo, eu migraria para uma disciplina de migrations mais rígida.
+- o seed foi pensado para demo manual e avaliação rápida, não para volumetria:
+  priorizei legibilidade dos cenários em vez de massa de dados.
+- `dashboard/summary` foi expandido como dashboard operacional sem frontend:
+  entrega agregados executivos, métricas de cobrança e fila curta de priorização, mas ainda não é uma camada analítica histórica completa.
+- a régua foi implementada com regras explícitas, não com decisão automatizada por IA em runtime:
+  preferi previsibilidade e auditabilidade antes de sofisticação adaptativa.
 
 ## Próximos passos pensados
 
