@@ -1,5 +1,6 @@
 import { EntityId } from '@/@core/domain/entities/entity-id';
 import { ECommunicationType } from '@/@core/enums/domain';
+
 import { ECollectionPriorityScoreReason } from '@/modules/collections/domain/enums/collection-priority-score-reason';
 import { ECollectionRuleSkippedReason } from '@/modules/collections/domain/enums/collection-rule-skipped-reason';
 

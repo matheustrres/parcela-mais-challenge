@@ -248,7 +248,8 @@ export class ListDelinquentPatientsUseCase implements UseCase<
 		attempt: CommunicationAttemptEntity,
 		referenceDate: Date,
 	): Date | null {
-		const effectiveAt = attempt.sentAt ?? attempt.scheduledFor ?? attempt.createdAt;
+		const effectiveAt =
+			attempt.sentAt ?? attempt.scheduledFor ?? attempt.createdAt;
 		if (effectiveAt.getTime() > referenceDate.getTime()) {
 			return null;
 		}

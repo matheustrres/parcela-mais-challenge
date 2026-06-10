@@ -279,7 +279,11 @@ export class PrismaDashboardSummaryQueryRepository implements DashboardSummaryQu
 	}
 
 	private getInstallmentDueDateTimestamp(date: Date): number {
-		return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+		return Date.UTC(
+			date.getUTCFullYear(),
+			date.getUTCMonth(),
+			date.getUTCDate(),
+		);
 	}
 
 	private getBusinessDayStartTimestamp(date: Date): number {

@@ -65,8 +65,7 @@ export class GetDashboardSummaryUseCase implements UseCase<
 					priorityReasons: item.priorityReasons,
 					lastCommunicationAt: item.lastCommunicationAt,
 					suggestedAction: item.suggestedAction,
-					suggestedActionSkippedReason:
-						item.suggestedActionSkippedReason,
+					suggestedActionSkippedReason: item.suggestedActionSkippedReason,
 				})),
 			},
 		};
