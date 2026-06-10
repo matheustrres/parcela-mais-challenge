@@ -14,7 +14,8 @@ export class PatientPrismaMapper {
 				clinicId: EntityUuid.createFrom(record.clinicId),
 				email: record.email,
 				phone: record.phone,
-				preferredChannel: record.preferredChannel as ECommunicationChannel | null,
+				preferredChannel:
+					record.preferredChannel as ECommunicationChannel | null,
 				contactStatus: record.contactStatus as EContactStatus,
 			},
 			{
@@ -24,7 +25,9 @@ export class PatientPrismaMapper {
 		);
 	}
 
-	static toPersistence(entity: PatientEntity): Prisma.PatientUncheckedCreateInput {
+	static toPersistence(
+		entity: PatientEntity,
+	): Prisma.PatientUncheckedCreateInput {
 		return {
 			id: entity.id.toString(),
 			clinicId: entity.clinicId.toString(),
