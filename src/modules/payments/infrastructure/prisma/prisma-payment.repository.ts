@@ -15,6 +15,19 @@ import { resolvePrismaClient } from '@/shared/modules/database/prisma-transactio
 export class PrismaPaymentRepository implements PaymentRepository {
 	constructor(private readonly databaseService: DatabaseService) {}
 
+	async findByIdAndClinicId(
+		id: EntityUuid,
+		clinicId: EntityUuid,
+	): Promise<PaymentEntity | null> {
+		const payment = await this.databaseService.payment.findFirst({
+			where: {
+				id: id.toString(),
+				clinicId: clinicId.toString(),
+			},
+		});
+		return payment ? PaymentPrismaMapper.toDomain(payment) : null;
+	}
+
 	async findByClinicIdAndIdempotencyKey(
 		clinicId: EntityUuid,
 		idempotencyKey: string,

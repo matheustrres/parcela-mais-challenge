@@ -35,6 +35,7 @@ export type RegisterPaymentOutput = {
 	installmentStatus: EInstallmentStatus;
 	installmentPaidAmountCents: number;
 	installmentRemainingAmountCents: number;
+	reused: boolean;
 };
 
 @Injectable()
@@ -223,7 +224,10 @@ export class RegisterPaymentUseCase implements UseCase<
 		if (payment.idempotencyPayloadHash !== payloadHash) {
 			throw new ApplicationException(mismatchCode);
 		}
-		return this.toOutput(payment, installment);
+		return {
+			...this.toOutput(payment, installment),
+			reused: true,
+		};
 	}
 
 	private toOutput(
@@ -243,6 +247,7 @@ export class RegisterPaymentUseCase implements UseCase<
 			installmentRemainingAmountCents: installment
 				.getRemainingAmount()
 				.getCents(),
+			reused: false,
 		};
 	}
 

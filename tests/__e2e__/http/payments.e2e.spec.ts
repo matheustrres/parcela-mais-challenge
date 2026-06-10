@@ -10,6 +10,7 @@ import {
 	EDebtAgreementStatus,
 	EInstallmentStatus,
 	EPaymentMethod,
+	EPaymentWebhookStatus,
 } from '@/@core/enums/domain';
 
 import { DatabaseService } from '@/shared/modules/database/database.service';
@@ -216,5 +217,180 @@ describe('Payments API (e2e)', () => {
 		expect(first.status).toBe(201);
 		expect(replay.status).toBe(409);
 		expect(replay.body.detail).toBe('IDEMPOTENCY_KEY_PAYLOAD_MISMATCH');
+	});
+
+	it('should process simulated webhook as partial payment and expose dashboard summary', async () => {
+		const { clinic, installment } = await seedInstallment(1_000);
+
+		const response = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send({
+				clinicId: clinic.id,
+				installmentId: installment.id,
+				provider: 'pix_simulator',
+				eventId: 'evt-partial-1',
+				externalReference: 'webhook-partial-1',
+				amountCents: 400,
+				method: EPaymentMethod.Pix,
+				paidAt: '2026-06-10T13:00:00.000Z',
+			});
+
+		expect(response.status).toBe(201);
+		expect(response.body).toMatchObject({
+			provider: 'PIX_SIMULATOR',
+			eventId: 'evt-partial-1',
+			webhookStatus: EPaymentWebhookStatus.Processed,
+			webhookReplay: false,
+			paymentReused: false,
+			installmentStatus: EInstallmentStatus.PartiallyPaid,
+			installmentRemainingAmountCents: 600,
+		});
+		expect(response.body.webhookEventId).toBeDefined();
+
+		const dashboardResponse = await request(httpServer)
+			.get('/dashboard/summary')
+			.query({
+				clinicId: clinic.id,
+				referenceDate: '2026-06-10T15:00:00.000Z',
+			});
+
+		expect(dashboardResponse.status).toBe(200);
+		expect(dashboardResponse.body.payments.totalPayments).toBe(1);
+		expect(dashboardResponse.body.receivables.totalPaidAmountCents).toBe(400);
+	});
+
+	it('should mark installment as PAID on total simulated webhook', async () => {
+		const { clinic, installment } = await seedInstallment(1_000);
+
+		const response = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send({
+				clinicId: clinic.id,
+				installmentId: installment.id,
+				provider: 'pix_simulator',
+				eventId: 'evt-total-1',
+				externalReference: 'webhook-total-1',
+				amountCents: 1_000,
+				method: EPaymentMethod.Boleto,
+				paidAt: '2026-06-10T13:00:00.000Z',
+			});
+
+		expect(response.status).toBe(201);
+		expect(response.body.installmentStatus).toBe(EInstallmentStatus.Paid);
+		expect(response.body.installmentRemainingAmountCents).toBe(0);
+	});
+
+	it('should absorb identical simulated webhook replay with 200 and single financial record', async () => {
+		const { clinic, installment } = await seedInstallment(1_000);
+		const payload = {
+			clinicId: clinic.id,
+			installmentId: installment.id,
+			provider: 'pix_simulator',
+			eventId: 'evt-replay-1',
+			externalReference: 'webhook-replay-1',
+			amountCents: 1_000,
+			method: EPaymentMethod.Pix,
+			paidAt: '2026-06-10T13:00:00.000Z',
+		};
+
+		const first = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send(payload);
+		const replay = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send(payload);
+
+		expect(first.status).toBe(201);
+		expect(replay.status).toBe(200);
+		expect(replay.body.paymentId).toBe(first.body.paymentId);
+		expect(replay.body.webhookEventId).toBe(first.body.webhookEventId);
+		expect(replay.body.provider).toBe('PIX_SIMULATOR');
+		expect(replay.body.eventId).toBe('evt-replay-1');
+		expect(replay.body.webhookStatus).toBe(EPaymentWebhookStatus.Processed);
+		expect(replay.body.webhookReplay).toBe(true);
+		expect(replay.body.paymentReused).toBe(true);
+		expect(await db.payment.count()).toBe(1);
+		expect(await db.paymentWebhookEvent.count()).toBe(1);
+	});
+
+	it('should return 409 on divergent webhook payload for same provider and event', async () => {
+		const { clinic, installment } = await seedInstallment(1_000);
+		const basePayload = {
+			clinicId: clinic.id,
+			installmentId: installment.id,
+			provider: 'pix_simulator',
+			eventId: 'evt-mismatch-1',
+			externalReference: 'webhook-mismatch-1',
+			amountCents: 400,
+			method: EPaymentMethod.Pix,
+			paidAt: '2026-06-10T13:00:00.000Z',
+		};
+
+		const first = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send(basePayload);
+		const replay = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send({
+				...basePayload,
+				amountCents: 500,
+			});
+
+		expect(first.status).toBe(201);
+		expect(replay.status).toBe(409);
+		expect(replay.body.detail).toBe('PAYMENT_WEBHOOK_EVENT_PAYLOAD_MISMATCH');
+	});
+
+	it('should reuse existing payment on new event with same external reference', async () => {
+		const { clinic, installment } = await seedInstallment(1_000);
+		await request(httpServer).post('/payments').send({
+			clinicId: clinic.id,
+			installmentId: installment.id,
+			amountCents: 400,
+			method: EPaymentMethod.Pix,
+			externalReference: 'shared-ext-1',
+			idempotencyKey: 'manual-shared-ext-1',
+			paidAt: '2026-06-10T13:00:00.000Z',
+		});
+
+		const response = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send({
+				clinicId: clinic.id,
+				installmentId: installment.id,
+				provider: 'pix_simulator',
+				eventId: 'evt-reuse-1',
+				externalReference: 'shared-ext-1',
+				amountCents: 400,
+				method: EPaymentMethod.Pix,
+				paidAt: '2026-06-10T13:00:00.000Z',
+			});
+
+		expect(response.status).toBe(201);
+		expect(response.body.webhookReplay).toBe(false);
+		expect(response.body.paymentReused).toBe(true);
+		expect(await db.payment.count()).toBe(1);
+	});
+
+	it('should reject unsupported webhook payment method', async () => {
+		const { clinic, installment } = await seedInstallment(1_000);
+
+		const response = await request(httpServer)
+			.post('/webhooks/payments/simulated')
+			.send({
+				clinicId: clinic.id,
+				installmentId: installment.id,
+				provider: 'pix_simulator',
+				eventId: 'evt-method-1',
+				externalReference: 'webhook-method-1',
+				amountCents: 400,
+				method: EPaymentMethod.Manual,
+				paidAt: '2026-06-10T13:00:00.000Z',
+			});
+
+		expect(response.status).toBe(400);
+		expect(response.body.detail).toContain(
+			'method must be one of: PIX, BOLETO',
+		);
 	});
 });

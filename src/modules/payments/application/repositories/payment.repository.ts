@@ -4,6 +4,10 @@ import { EntityId } from '@/@core/domain/entities/entity-id';
 import { PaymentEntity } from '@/modules/payments/domain/entities/payment.entity';
 
 export abstract class PaymentRepository {
+	abstract findByIdAndClinicId(
+		id: EntityId,
+		clinicId: EntityId,
+	): Promise<PaymentEntity | null>;
 	abstract findByClinicIdAndIdempotencyKey(
 		clinicId: EntityId,
 		idempotencyKey: string,
