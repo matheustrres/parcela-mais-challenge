@@ -168,8 +168,11 @@ model PaymentWebhookEvent {
   eventId           String    @map("event_id")
   externalReference String?   @map("external_reference")
   payload           Json
+  payloadHash       String    @map("payload_hash")
   status            String    @default("RECEIVED") // RECEIVED, PROCESSED, DUPLICATED, FAILED
   processedAt       DateTime? @map("processed_at")
+  errorCode         String?   @map("error_code")
+  retryable         Boolean?  @map("retryable")
   errorMessage      String?   @map("error_message") @db.Text
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")

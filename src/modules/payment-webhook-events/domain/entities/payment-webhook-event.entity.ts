@@ -19,8 +19,11 @@ type PaymentWebhookEventEntityProps = {
 	eventId: string;
 	externalReference: string | null;
 	payload: Record<string, unknown>;
+	payloadHash: string;
 	status: EPaymentWebhookStatus;
 	processedAt: Date | null;
+	errorCode: string | null;
+	retryable: boolean | null;
 	errorMessage: string | null;
 };
 
@@ -60,14 +63,27 @@ export class PaymentWebhookEventEntity extends UpdatableEntity<PaymentWebhookEve
 		});
 	}
 
-	markAsProcessed(paymentId: EntityId, processedAt: Date): void {
-		if (Guard.isEmpty(paymentId)) {
+	markAsProcessed(input: {
+		paymentId: EntityId;
+		installmentId: EntityId;
+		processedAt: Date;
+	}): void {
+		if (this.props.status === EPaymentWebhookStatus.Processed) {
+			throw new DomainException('PAYMENT_WEBHOOK_ALREADY_PROCESSED');
+		}
+		if (Guard.isEmpty(input.paymentId)) {
 			throw new DomainException('PAYMENT_WEBHOOK_PAYMENT_ID_REQUIRED');
 		}
-		ensureValidDate(processedAt, 'PAYMENT_WEBHOOK_PROCESSED_AT_REQUIRED');
-		this.props.paymentId = paymentId;
-		this.props.processedAt = processedAt;
+		if (Guard.isEmpty(input.installmentId)) {
+			throw new DomainException('PAYMENT_WEBHOOK_INSTALLMENT_ID_REQUIRED');
+		}
+		ensureValidDate(input.processedAt, 'PAYMENT_WEBHOOK_PROCESSED_AT_REQUIRED');
+		this.props.paymentId = input.paymentId;
+		this.props.installmentId = input.installmentId;
+		this.props.processedAt = input.processedAt;
 		this.props.status = EPaymentWebhookStatus.Processed;
+		this.props.errorCode = null;
+		this.props.retryable = null;
 		this.props.errorMessage = null;
 		this.touch();
 	}
@@ -77,13 +93,34 @@ export class PaymentWebhookEventEntity extends UpdatableEntity<PaymentWebhookEve
 		this.touch();
 	}
 
-	markAsFailed(errorMessage: string): void {
-		const normalizedMessage = errorMessage.trim();
-		if (normalizedMessage.length === 0) {
-			throw new DomainException('PAYMENT_WEBHOOK_ERROR_MESSAGE_REQUIRED');
+	markAsFailed(input: {
+		errorCode: string;
+		retryable: boolean;
+		errorMessage?: string | null;
+	}): void {
+		const normalizedCode = input.errorCode.trim();
+		const normalizedMessage = input.errorMessage?.trim() || null;
+		if (normalizedCode.length === 0) {
+			throw new DomainException('PAYMENT_WEBHOOK_ERROR_CODE_REQUIRED');
 		}
 		this.props.status = EPaymentWebhookStatus.Failed;
+		this.props.errorCode = normalizedCode;
+		this.props.retryable = input.retryable;
 		this.props.errorMessage = normalizedMessage;
+		this.touch();
+	}
+
+	prepareForRetry(): void {
+		if (this.props.status !== EPaymentWebhookStatus.Failed) {
+			throw new DomainException('PAYMENT_WEBHOOK_RETRY_REQUIRES_FAILED_STATUS');
+		}
+		if (this.props.retryable !== true) {
+			throw new DomainException('PAYMENT_WEBHOOK_RETRY_REQUIRES_RETRYABLE');
+		}
+		this.props.status = EPaymentWebhookStatus.Received;
+		this.props.errorCode = null;
+		this.props.retryable = null;
+		this.props.errorMessage = null;
 		this.touch();
 	}
 
@@ -115,12 +152,24 @@ export class PaymentWebhookEventEntity extends UpdatableEntity<PaymentWebhookEve
 		return this.props.payload;
 	}
 
+	get payloadHash(): string {
+		return this.props.payloadHash;
+	}
+
 	get status(): EPaymentWebhookStatus {
 		return this.props.status;
 	}
 
 	get processedAt(): Date | null {
 		return this.props.processedAt;
+	}
+
+	get errorCode(): string | null {
+		return this.props.errorCode;
+	}
+
+	get retryable(): boolean | null {
+		return this.props.retryable;
 	}
 
 	get errorMessage(): string | null {
@@ -132,9 +181,11 @@ export class PaymentWebhookEventEntity extends UpdatableEntity<PaymentWebhookEve
 	): PaymentWebhookEventEntityProps {
 		return {
 			...props,
-			provider: props.provider.trim(),
+			provider: props.provider.trim().toUpperCase(),
 			eventId: props.eventId.trim(),
 			externalReference: props.externalReference?.trim() || null,
+			payloadHash: props.payloadHash.trim(),
+			errorCode: props.errorCode?.trim() || null,
 			errorMessage: props.errorMessage?.trim() || null,
 		};
 	}
@@ -152,6 +203,9 @@ export class PaymentWebhookEventEntity extends UpdatableEntity<PaymentWebhookEve
 		if (Guard.isEmpty(props.payload)) {
 			throw new DomainException('PAYMENT_WEBHOOK_PAYLOAD_REQUIRED');
 		}
+		if (Guard.isEmpty(props.payloadHash)) {
+			throw new DomainException('PAYMENT_WEBHOOK_PAYLOAD_HASH_REQUIRED');
+		}
 		if (!Object.values(EPaymentWebhookStatus).includes(props.status)) {
 			throw new DomainException('INVALID_PAYMENT_WEBHOOK_STATUS');
 		}
@@ -163,18 +217,20 @@ export class PaymentWebhookEventEntity extends UpdatableEntity<PaymentWebhookEve
 		}
 		if (
 			props.status === EPaymentWebhookStatus.Processed &&
-			(Guard.isEmpty(props.paymentId) || props.processedAt === null)
+			(Guard.isEmpty(props.paymentId) ||
+				Guard.isEmpty(props.installmentId) ||
+				props.processedAt === null)
 		) {
 			throw new DomainException(
-				'PROCESSED_PAYMENT_WEBHOOK_REQUIRES_PAYMENT_ID_AND_PROCESSED_AT',
+				'PROCESSED_PAYMENT_WEBHOOK_REQUIRES_PAYMENT_ID_INSTALLMENT_ID_AND_PROCESSED_AT',
 			);
 		}
 		if (
 			props.status === EPaymentWebhookStatus.Failed &&
-			Guard.isEmpty(props.errorMessage)
+			(Guard.isEmpty(props.errorCode) || props.retryable === null)
 		) {
 			throw new DomainException(
-				'FAILED_PAYMENT_WEBHOOK_REQUIRES_ERROR_MESSAGE',
+				'FAILED_PAYMENT_WEBHOOK_REQUIRES_ERROR_CODE_AND_RETRYABLE',
 			);
 		}
 	}
