@@ -156,6 +156,7 @@ describe('InstallmentPrismaMapper', () => {
 			const createdAt = new Date('2026-06-01T10:00:00.000Z');
 			const updatedAt = new Date('2026-06-02T10:00:00.000Z');
 			const dueDate = new Date('2026-06-10T00:00:00.000Z');
+			const normalizedDueDate = new Date('2026-06-10T12:00:00.000Z');
 			const paidAt = new Date('2026-06-11T12:00:00.000Z');
 			const installment = InstallmentEntity.createFrom(
 				EntityUuid.createFrom('installment-1'),
@@ -178,7 +179,7 @@ describe('InstallmentPrismaMapper', () => {
 				clinicId: 'clinic-1',
 				debtAgreementId: 'agreement-1',
 				installmentNumber: 1,
-				dueDate,
+				dueDate: normalizedDueDate,
 				amountCents: 4000,
 				paidAmountCents: 4000,
 				status: EInstallmentStatus.Paid,
