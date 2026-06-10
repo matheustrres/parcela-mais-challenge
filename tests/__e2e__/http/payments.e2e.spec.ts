@@ -121,11 +121,25 @@ describe('Payments API (e2e)', () => {
 
 		expect(dashboardResponse.status).toBe(200);
 		expect(dashboardResponse.body).toMatchObject({
-			totalReceivableCents: 600,
-			totalOverdueCents: 600,
-			paidThisMonthCents: 400,
-			openInstallments: 1,
-			paidInstallments: 0,
+			clinicId: clinic.id,
+			referenceDate: '2026-06-10T15:00:00.000Z',
+			receivables: {
+				totalDebtAmountCents: 1_000,
+				totalPaidAmountCents: 400,
+				totalOpenAmountCents: 600,
+				totalOverdueAmountCents: 600,
+			},
+			installments: {
+				open: 1,
+				paid: 0,
+				partiallyPaid: 1,
+				overdue: 1,
+			},
+			payments: {
+				totalPayments: 1,
+				paidAmountLast7DaysCents: 400,
+				paidAmountLast30DaysCents: 400,
+			},
 		});
 	});
 

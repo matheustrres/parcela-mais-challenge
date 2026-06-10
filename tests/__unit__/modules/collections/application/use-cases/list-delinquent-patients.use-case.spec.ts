@@ -246,6 +246,7 @@ describe('ListDelinquentPatientsUseCase', () => {
 					],
 					lastCommunicationAt: new Date('2026-06-09T10:00:00.000Z'),
 					suggestedAction: ECommunicationType.OverdueFollowUp,
+					suggestedActionSkippedReason: null,
 				},
 			],
 			total: 2,
@@ -287,6 +288,9 @@ describe('ListDelinquentPatientsUseCase', () => {
 		});
 
 		expect(output.items[0]?.suggestedAction).toBeNull();
+		expect(output.items[0]?.suggestedActionSkippedReason).toBe(
+			ECollectionRuleSkippedReason.NoRuleForCurrentDate,
+		);
 	});
 
 	it('should throw when clinic does not exist', async () => {

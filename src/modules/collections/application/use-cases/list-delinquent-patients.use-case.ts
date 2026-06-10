@@ -11,6 +11,7 @@ import {
 	DelinquentPatientsQueryRepository,
 } from '@/modules/collections/application/repositories/delinquent-patients-query.repository';
 import { ECollectionPriorityScoreReason } from '@/modules/collections/domain/enums/collection-priority-score-reason';
+import { ECollectionRuleSkippedReason } from '@/modules/collections/domain/enums/collection-rule-skipped-reason';
 import { CollectionPriorityScoreDomainService } from '@/modules/collections/domain/services/collection-priority-score.service';
 import { CollectionRulePolicyDomainService } from '@/modules/collections/domain/services/collection-rule-policy.service';
 import { CommunicationAttemptRepository } from '@/modules/communications/application/repositories/communication-attempt.repository';
@@ -36,6 +37,7 @@ export type DelinquentPatientOutput = {
 	priorityReasons: ECollectionPriorityScoreReason[];
 	lastCommunicationAt: Date | null;
 	suggestedAction: ECommunicationType | null;
+	suggestedActionSkippedReason: ECollectionRuleSkippedReason | null;
 };
 
 export type ListDelinquentPatientsOutput = {
@@ -208,6 +210,11 @@ export class ListDelinquentPatientsUseCase implements UseCase<
 			suggestedAction:
 				suggestedDecision.items.find((item) => item.status === 'GENERATED')
 					?.type ?? null,
+			suggestedActionSkippedReason:
+				suggestedDecision.items.find((item) => item.status === 'GENERATED')
+					?.skippedReason ??
+				suggestedDecision.items[0]?.skippedReason ??
+				null,
 		};
 	}
 
@@ -241,7 +248,7 @@ export class ListDelinquentPatientsUseCase implements UseCase<
 		attempt: CommunicationAttemptEntity,
 		referenceDate: Date,
 	): Date | null {
-		const effectiveAt = attempt.sentAt ?? attempt.createdAt;
+		const effectiveAt = attempt.sentAt ?? attempt.scheduledFor ?? attempt.createdAt;
 		if (effectiveAt.getTime() > referenceDate.getTime()) {
 			return null;
 		}
