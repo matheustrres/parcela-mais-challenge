@@ -1,6 +1,6 @@
 # Parcela Mais Technical Case
 
-API backend para um recorte funcional de cobrança de parcelas em clínicas. O projeto implementa criação e consulta de dívidas por endpoints dedicados, geração de parcelas, registro de pagamentos com idempotência, régua de cobrança, listagem de inadimplentes e endpoints HTTP documentados via Swagger.
+API backend para um recorte funcional de cobrança de parcelas em clínicas. O projeto implementa criação e consulta de dívidas por endpoints dedicados, geração de parcelas, registro de pagamentos com idempotência, régua de cobrança, listagem de inadimplentes, dashboard operacional e webhook simulado de pagamento, com endpoints HTTP documentados via Swagger.
 
 ## Resumo do recorte
 
@@ -10,6 +10,8 @@ Priorizei entregar bem o núcleo mínimo do case:
 - registrar pagamentos com proteção contra duplicidade;
 - listar inadimplentes com priorização;
 - aplicar uma régua de cobrança com regras explícitas;
+- expor um dashboard operacional para a clínica;
+- simular integração de pagamento via webhook auditável;
 - manter o sistema demonstrável por API, com dados sintéticos e testes.
 
 Em vez de abrir muitas frentes, preferi concentrar esforço em consistência de domínio, isolamento por clínica, semântica temporal das leituras, idempotência de pagamento e previsibilidade dos fluxos críticos.
@@ -22,6 +24,7 @@ As prioridades deste recorte foram:
 - leitura clara do estado atual da cobrança, com endpoints dedicados para consultar acordos e inadimplência;
 - regras de comunicação determinísticas, porque a régua é o centro do desafio;
 - robustez em pagamento, com idempotência, replay seguro e proteção contra atualização concorrente;
+- webhook auditável com replay seguro e reconstrução de resposta;
 - dados sintéticos, isolamento multi-clínica e validações explícitas, para reduzir risco operacional e facilitar avaliação.
 
 Escolhi não começar por frontend ou integrações externas porque isso aumentaria a superfície de demo sem melhorar tanto a qualidade do núcleo de cobrança.
@@ -39,12 +42,14 @@ Este repositório implementa esse recorte com foco em modelagem de domínio, sep
 
 ## O que foi construído
 
-- modelo de domínio para `Clinic`, `Patient`, `DebtAgreement`, `Installment`, `Payment` e `CommunicationAttempt`;
+- modelo de domínio para `Clinic`, `Patient`, `DebtAgreement`, `Installment`, `Payment`, `CommunicationAttempt` e `PaymentWebhookEvent`;
 - mappers Prisma dedicados por entidade;
 - casos de uso para criação e consulta de acordos com geração de parcelas;
 - caso de uso para registro de pagamento com idempotência por `idempotencyKey` e `externalReference`;
+- caso de uso para processamento de webhook simulado com idempotência por `provider + eventId`;
 - régua de cobrança para `D-3`, `D0`, `D+2`, `D+7` e `D+15`;
 - score de priorização de inadimplentes;
+- dashboard operacional em `GET /dashboard/summary`;
 - endpoints HTTP mínimos para demonstração;
 - Swagger como interface principal de avaliação;
 - seed sintético para demo manual;
@@ -57,9 +62,12 @@ Para manter o recorte enxuto e sólido, deixei fora desta etapa:
 - autenticação e autorização reais;
 - renegociação / novo parcelamento;
 - integrações reais de cobrança ou mensageria;
-- webhook de pagamento completo;
 - frontend dedicado para operação da clínica;
 - camada analítica mais profunda do dashboard.
+
+Observação:
+
+- existe webhook simulado de pagamento, mas não há integração real com PSP, fila, retry assíncrono ou DLQ.
 
 Esses itens seriam passos naturais de evolução, mas não eram necessários para demonstrar o raciocínio principal de modelagem, cobrança e pagamento.
 
@@ -166,6 +174,26 @@ Todos os dados são sintéticos. Não há uso de dado clínico real, dado médic
 - `GET /installments`
 - `GET /communication-attempts`
 - `GET /dashboard/summary`
+- `POST /webhooks/payments/simulated`
+
+## Fluxo sugerido para demo em vídeo
+
+Se a ideia for manter a demo em `6-9 minutos`, a sequência mais eficiente é:
+
+1. `POST /debt-agreements`
+2. `GET /debt-agreements/:id`
+3. `GET /delinquents`
+4. `POST /collection-rules/run`
+5. `GET /communication-attempts`
+6. `POST /webhooks/payments/simulated`
+7. `POST /webhooks/payments/simulated` novamente com o mesmo body
+8. `GET /dashboard/summary`
+
+Fluxo opcional, se houver tempo:
+
+1. `GET /debt-agreements`
+2. `GET /installments`
+3. `POST /webhooks/payments/simulated` com payload divergente para mostrar `409`
 
 ## Modelo de domínio
 
@@ -223,6 +251,38 @@ O fluxo de pagamento implementa:
 - detecção de replay com payload divergente via hash normalizado;
 - controle transacional de pagamento + atualização da parcela;
 - controle de concorrência por `version` na parcela.
+
+## Webhook simulado de pagamento
+
+`POST /webhooks/payments/simulated` foi implementado para demonstrar integração externa com cuidado operacional.
+
+Garantias principais:
+
+- usa `RegisterPaymentUseCase` como único caminho financeiro;
+- aceita apenas `PIX` e `BOLETO`;
+- idempotência por `provider + eventId`;
+- hash canônico do payload para detectar divergência;
+- persistência auditável em `PaymentWebhookEvent`;
+- replay idêntico retorna `200`;
+- evento novo retorna `201`;
+- mesmo `provider + eventId` com payload diferente retorna `409 PAYMENT_WEBHOOK_EVENT_PAYLOAD_MISMATCH`.
+
+Output principal:
+
+- `webhookEventId`
+- `provider`
+- `eventId`
+- `webhookStatus`
+- `paymentId`
+- `webhookReplay`
+- `paymentReused`
+
+Semântica adotada:
+
+- `paymentReused = nenhum novo Payment foi criado nesta chamada`
+- portanto, no replay de um evento já processado, a resposta correta é:
+  - `webhookReplay: true`
+  - `paymentReused: true`
 
 ## Priorização de inadimplentes
 
@@ -291,7 +351,7 @@ Em resumo: usei IA para ganhar velocidade, mas validei manualmente as decisões 
 ## Próximos passos pensados
 
 - autenticação/autorização multi-tenant;
-- webhook de pagamento com persistência e replay;
+- integração real de webhook com PSP, fila e retry assíncrono;
 - integração real de canais de comunicação;
 - paginação/filtros mais ricos para read endpoints;
 - observabilidade operacional mais forte;
