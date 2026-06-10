@@ -6,6 +6,7 @@ import { cleanDatabase } from './database-cleaner';
 import { AppModule } from '@/app.module';
 
 import { DatabaseService } from '@/shared/modules/database/database.service';
+import { setupSwaggerDocs } from '@/shared/swagger';
 
 type CreateAppFixtureOptions = {
 	shouldClearAllDb: boolean;
@@ -30,6 +31,7 @@ export async function createAppFixture({
 			transform: true,
 		}),
 	);
+	setupSwaggerDocs(app);
 	await app.init();
 
 	const db = module.get(DatabaseService);
