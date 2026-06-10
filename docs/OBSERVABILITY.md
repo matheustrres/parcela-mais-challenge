@@ -170,6 +170,7 @@ Notas semânticas:
 - `installments.open` inclui parcelas `PENDING` e `PARTIALLY_PAID` com saldo em aberto.
 - `agreements.fullyPaid` é um contador derivado de acordos quitados, não uma quarta categoria adicional do payload.
 - `suggestedActionSkippedReason` representa o primeiro bloqueio encontrado pela `CollectionRulePolicyDomainService`, seguindo a ordem de precedência interna da policy.
+- `priorityReasons.RECENT_PARTIAL_PAYMENT` usa janela heurística de até 7 dias para reduzir score; isso é diferente do bloqueio operacional de 24h usado para decidir se `suggestedAction` deve virar `null`.
 
 ## Tratamento de erros
 

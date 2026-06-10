@@ -138,6 +138,9 @@ export class CollectionPriorityScoreDomainService {
 		lastPartialPaymentAt: Date | null,
 		referenceDate: Date,
 	): number {
+		// Priority scoring uses a broader lookback than the delivery policy:
+		// recent partial payments reduce urgency for up to 7 days, but they
+		// only block a new communication within the policy cooldown window.
 		if (!lastPartialPaymentAt) return 0;
 		const days = this.diffInCalendarDays(referenceDate, lastPartialPaymentAt);
 		if (days <= 0) return 15;

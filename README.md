@@ -236,6 +236,12 @@ O fluxo de pagamento implementa:
 
 A listagem retorna paginação, score, razões do score, última comunicação e ação sugerida quando aplicável.
 
+Observação importante:
+
+- pagamento parcial recente reduz score por uma janela heurística maior, de até 7 dias;
+- já o bloqueio de nova comunicação por pagamento parcial usa a régua operacional de 24h;
+- por isso, um paciente pode continuar com `priorityReasons: ["RECENT_PARTIAL_PAYMENT"]` e ainda assim receber `suggestedAction` se o pagamento parcial não estiver mais dentro da janela de bloqueio.
+
 ## Consulta de dívidas
 
 O sistema permite registrar e consultar dívidas por endpoints dedicados:

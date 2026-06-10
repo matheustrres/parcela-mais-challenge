@@ -35,6 +35,12 @@ A régua deve pular comunicação se:
 - Não comunicar fora de janela comercial simulada.
 - Não gerar nova cobrança se houve pagamento parcial nas últimas 24h.
 
+Importante:
+
+- essa janela de 24h vale para bloqueio operacional de nova comunicação;
+- ela é diferente da heurística de priorização, onde pagamento parcial recente ainda reduz score por até 7 dias;
+- por isso, um paciente pode aparecer com `RECENT_PARTIAL_PAYMENT` em `priorityReasons` e ainda assim receber `suggestedAction` se o último pagamento parcial já saiu da janela de 24h.
+
 ## Janela comercial
 
 - 09:00–18:00, horário de Brasília.
