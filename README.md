@@ -97,6 +97,10 @@ Instalação:
 npm install
 ```
 
+```bash
+docker compose up -d 
+```
+
 Subir schema no banco de desenvolvimento:
 
 ```bash
